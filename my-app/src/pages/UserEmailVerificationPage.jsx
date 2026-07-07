@@ -1,8 +1,9 @@
+
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import Quiz from "../assets/Restaurent.jpg";
+import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
 
 const SiteUserEmailVerificationPage = () => {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -15,17 +16,18 @@ const SiteUserEmailVerificationPage = () => {
     const newCode = [...code];
 
     if (value.length > 1) {
-      const pastedCode = value.slice(0, 6).split("");
+      const pasted = value.slice(0, 6).split("");
       for (let i = 0; i < 6; i++) {
-        newCode[i] = pastedCode[i] || "";
+        newCode[i] = pasted[i] || "";
       }
       setCode(newCode);
-      const lastFilledIndex = newCode.findLastIndex((digit) => digit !== "");
-      const focusIndex = lastFilledIndex < 5 ? lastFilledIndex + 1 : 5;
-      inputRefs.current[focusIndex]?.focus();
+
+      const lastIndex = newCode.findLastIndex((d) => d !== "");
+      inputRefs.current[lastIndex < 5 ? lastIndex + 1 : 5]?.focus();
     } else {
       newCode[index] = value;
       setCode(newCode);
+
       if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
@@ -44,39 +46,53 @@ const SiteUserEmailVerificationPage = () => {
 
     try {
       await verifyEmail(verificationCode);
-      toast.success("Email verified successfully!");
+      toast.success("Email verified successfully / විද්‍යුත් තැපෑල සාර්ථකව සත්‍යාපනය විය");
       navigate("/user/dashboard");
 
-      // Auto-refresh after short delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    } catch (error) {
-      console.error("Verification failed:", error);
+      setTimeout(() => window.location.reload(), 100);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  // Auto-submit if all digits are filled
   useEffect(() => {
-    if (code.every((digit) => digit !== "")) {
+    if (code.every((d) => d !== "")) {
       handleSubmit(new Event("submit"));
     }
-    // eslint-disable-next-line
   }, [code]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-gray-100 to-gray-200 px-4"
+    <div
+      className="min-h-screen flex items-center justify-center px-4 bg-cover bg-center relative"
+      style={{ backgroundImage: `url(${Quiz})` }}
     >
-      <div className="w-full max-w-md bg-white/80 backdrop-blur-lg border border-gray-200 shadow-2xl rounded-3xl p-10 sm:p-12">
-        <h2 className="text-3xl font-semibold text-center text-gray-900 mb-6">Verify Your Email</h2>
-        <p className="text-center text-gray-600 mb-6 text-sm">Enter the 6-digit code we sent to your email address.</p>
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-between gap-2">
+      {/* Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-10 w-full max-w-md bg-white/80 backdrop-blur-xl border border-white/30 shadow-2xl rounded-3xl p-6 sm:p-10"
+      >
+        {/* Title */}
+        <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900">
+          Verify Email / විද්‍යුත් තැපෑල සත්‍යාපනය
+        </h2>
+
+        <p className="text-center text-gray-600 mt-2 text-sm sm:text-base">
+          Enter the 6-digit code sent to your email
+          <br />
+          <span className="text-gray-500">
+            ඔබගේ විද්‍යුත් තැපෑලට එවූ 6-අංක කේතය ඇතුළත් කරන්න
+          </span>
+        </p>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+
+          {/* OTP Inputs */}
+          <div className="flex justify-between gap-2 sm:gap-3">
             {code.map((digit, index) => (
               <input
                 key={index}
@@ -86,25 +102,33 @@ const SiteUserEmailVerificationPage = () => {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-12 text-center text-xl font-medium text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
+                className="w-10 sm:w-12 h-12 sm:h-14 text-center text-lg sm:text-xl font-semibold bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             ))}
           </div>
 
-          {error && <p className="text-center text-red-500 font-medium text-sm">{error}</p>}
+          {/* Error */}
+          {error && (
+            <p className="text-center text-red-500 text-sm font-medium">
+              {error}
+            </p>
+          )}
 
+          {/* Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit"
-            disabled={isLoading || code.some((digit) => !digit)}
-            className="w-full bg-black text-white font-medium rounded-xl py-3 shadow-md hover:bg-gray-900 transition duration-300 flex justify-center items-center disabled:opacity-50"
+            disabled={isLoading || code.some((d) => !d)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition flex justify-center items-center"
           >
-            {isLoading ? "Verifying..." : "Verify Email"}
+            {isLoading
+              ? "Verifying... / සත්‍යාපනය කරමින්"
+              : "Verify Email / සත්‍යාපනය කරන්න"}
           </motion.button>
         </form>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 

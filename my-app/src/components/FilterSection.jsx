@@ -1,93 +1,156 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaFilter } from "react-icons/fa";
 
 /**
- * Responsive, accessible PriceFilter component with modern Apple-style UI.
+ * Clean, modern, Apple-style PriceFilter component tailored for tourism guides.
+ * Integrates seamlessly without duplicate containers or wrapper headers.
  */
 function PriceFilter({ min = 0, max = 5000, value, onChange }) {
   const [localMin, setLocalMin] = useState(value?.min ?? min);
   const [localMax, setLocalMax] = useState(value?.max ?? max);
 
-  // Apply filter callback
-  const apply = () => {
-    if (onChange) onChange({ min: Number(localMin), max: Number(localMax) });
+  // Sync state if parent props change
+  useEffect(() => {
+    if (value) {
+      setLocalMin(value.min);
+      setLocalMax(value.max);
+    }
+  }, [value]);
+
+  // Apply values to callback
+  const handleApply = (minValue = localMin, maxValue = localMax) => {
+    const finalMin = Math.max(min, Math.min(Number(minValue) || 0, Number(maxValue) || max));
+    const finalMax = Math.min(max, Math.max(Number(maxValue) || 0, Number(minValue) || min));
+    
+    setLocalMin(finalMin);
+    setLocalMax(finalMax);
+
+    if (onChange) {
+      onChange({ min: finalMin, max: finalMax });
+    }
+  };
+
+  // Quick preset handlers
+  const applyPreset = (presetMin, presetMax) => {
+    setLocalMin(presetMin);
+    setLocalMax(presetMax);
+    handleApply(presetMin, presetMax);
   };
 
   return (
-    <section className="w-full max-w-md mx-auto mb-8 px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <FaFilter className="text-blue-500 text-xl sm:text-2xl" aria-hidden="true" />
-        <h4 className="text-lg sm:text-xl font-semibold text-gray-900 select-none">Price Range</h4>
-      </div>
+    <div className="w-full space-y-4">
+      {/* Input Fields Row */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        {/* Min Input */}
+        <div className="relative flex-1 w-full">
+          <label htmlFor="min-price-input" className="sr-only">Minimum Price (LKR)</label>
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <span className="text-slate-400 text-xs font-bold tracking-wider">MIN</span>
+          </div>
+          <input
+            id="min-price-input"
+            type="number"
+            min={min}
+            max={localMax}
+            value={localMin}
+            onChange={(e) => setLocalMin(e.target.value)}
+            onBlur={() => handleApply()}
+            placeholder="0"
+            className="w-full pl-14 pr-12 py-3 rounded-2xl border border-slate-200 bg-white/70 text-slate-800 text-sm font-bold placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition duration-200"
+          />
+          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+            <span className="text-slate-400 text-xs font-semibold">LKR</span>
+          </div>
+        </div>
 
-      {/* Filter Box */}
-      <div className="bg-white shadow-gray-400 border border-gray-200 rounded-2xl shadow-md p-5 sm:p-6">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            apply();
-          }}
-          className="flex flex-col sm:flex-row items-center gap-4"
-          aria-label="Price range filter form"
+        {/* Separator Line */}
+        <span className="hidden sm:block text-slate-300 font-medium select-none">—</span>
+
+        {/* Max Input */}
+        <div className="relative flex-1 w-full">
+          <label htmlFor="max-price-input" className="sr-only">Maximum Price (LKR)</label>
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <span className="text-slate-400 text-xs font-bold tracking-wider">MAX</span>
+          </div>
+          <input
+            id="max-price-input"
+            type="number"
+            min={localMin}
+            max={max}
+            value={localMax}
+            onChange={(e) => setLocalMax(e.target.value)}
+            onBlur={() => handleApply()}
+            placeholder={max.toString()}
+            className="w-full pl-14 pr-12 py-3 rounded-2xl border border-slate-200 bg-white/70 text-slate-800 text-sm font-bold placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition duration-200"
+          />
+          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+            <span className="text-slate-400 text-xs font-semibold">LKR</span>
+          </div>
+        </div>
+
+        {/* Manual Apply Button */}
+        <button
+          type="button"
+          onClick={() => handleApply()}
+          className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl px-6 py-3 shadow-sm hover:shadow-md transition duration-155 text-sm active:scale-[0.98]"
         >
-          {/* Min Price */}
-          <div className="flex flex-col w-full sm:w-1/2">
-            <label
-              htmlFor="min-price"
-              className="mb-1 text-xs sm:text-sm font-medium text-gray-600"
-            >
-              Min Price
-            </label>
-            <input
-              id="min-price"
-              type="number"
-              min={min}
-              max={localMax}
-              value={localMin}
-              onChange={(e) => setLocalMin(e.target.value)}
-              placeholder="0"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-800 text-sm sm:text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-              aria-label="Minimum price"
-            />
-          </div>
-
-          {/* Separator */}
-          <span className="hidden sm:block text-gray-400 font-semibold text-xl select-none">—</span>
-
-          {/* Max Price */}
-          <div className="flex flex-col w-full sm:w-1/2">
-            <label
-              htmlFor="max-price"
-              className="mb-1 text-xs sm:text-sm font-medium text-gray-600"
-            >
-              Max Price
-            </label>
-            <input
-              id="max-price"
-              type="number"
-              min={localMin}
-              max={max}
-              value={localMax}
-              onChange={(e) => setLocalMax(e.target.value)}
-              placeholder={max.toString()}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-800 text-sm sm:text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-              aria-label="Maximum price"
-            />
-          </div>
-
-          {/* Apply Button */}
-          <button
-            type="submit"
-            className="mt-4 sm:mt-0 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white font-semibold rounded-lg px-5 py-2.5 shadow-md transition-all text-sm sm:text-base select-none"
-            aria-label="Apply price filter"
-          >
-            <FaFilter />
-            Apply
-          </button>
-        </form>
+          <FaFilter className="text-xs text-emerald-400" />
+          Apply
+        </button>
       </div>
-    </section>
+
+      {/* Quick Select Presets */}
+      {/* Quick Select Presets */}
+<div className="flex flex-wrap items-center gap-2 pt-1.5">
+  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none mr-1">
+    Quick Filters / ඉක්මන් පෙරහන්:
+  </span>
+
+  <button
+    type="button"
+    onClick={() => applyPreset(0, 1000)}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+      localMin === 0 && localMax === 1000
+        ? "bg-emerald-55 border-emerald-250 text-emerald-800"
+        : "bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300"
+    }`}
+  >
+    Budget / අඩු වියදම් (&lt; 1,000)
+  </button>
+
+  <button
+    type="button"
+    onClick={() => applyPreset(1000, 3000)}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+      localMin === 1000 && localMax === 3000
+        ? "bg-emerald-55 border-emerald-250 text-emerald-800"
+        : "bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300"
+    }`}
+  >
+    Standard / සාමාන්‍ය (1,000 - 3,000)
+  </button>
+
+  <button
+    type="button"
+    onClick={() => applyPreset(3000, 5000)}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+      localMin === 3000 && localMax === 5000
+        ? "bg-emerald-55 border-emerald-250 text-emerald-800"
+        : "bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300"
+    }`}
+  >
+    Premium / සුඛෝපභෝගී (3,000+)
+  </button>
+
+  <button
+    type="button"
+    onClick={() => applyPreset(0, 5000)}
+    className="px-3 py-1.5 rounded-full text-xs font-semibold border bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-300 transition"
+  >
+    Clear / ඉවත් කරන්න
+  </button>
+</div>
+    </div>
   );
 }
 

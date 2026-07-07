@@ -1,6 +1,11 @@
-import React, { useState, useRef } from "react";
+import { useRef, useState } from "react";
+import { FiAlertCircle, FiCheckCircle, FiUpload } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { FiUpload, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+
+const DISTRICTS = [
+  { id: "anuradhapura", label: "Anuradhapura" },
+  { id: "polonnaruwa", label: "Polonnaruwa" },
+];
 
 const ShopCreate = () => {
   const [shopData, setShopData] = useState({
@@ -201,15 +206,24 @@ const ShopCreate = () => {
             />
           </div>
           <div>
-            <label className={labelClass}>Location</label>
-            <input
+            <label className={labelClass}>District / දිස්ත්‍රික්කය</label>
+            <select
               name="location"
               value={shopData.location}
               onChange={handleChange}
-              placeholder="Colombo, Kandy, ..."
               className={inputClass}
-              autoComplete="off"
-            />
+              required
+            >
+              <option value="">Select District</option>
+              {DISTRICTS.map((district) => (
+                <option key={district.id} value={district.label}>
+                  {district.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Only Anuradhapura and Polonnaruwa are available.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Photo</label>
