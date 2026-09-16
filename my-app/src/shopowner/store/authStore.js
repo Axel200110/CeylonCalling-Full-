@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import axios from "axios";
+import { create } from "zustand";
 
 const API_URL =
   import.meta.env.MODE === "development"
@@ -21,31 +21,10 @@ export const useAuthStore = create((set, get) => ({
   isCheckingAuth: true,
   message: null,
 
-  signup: async (email, password, name) => {
-    set({ isLoading: true, error: null, message: null });
-    try {
-      const response = await axios.post(`${API_URL}/signup`, {
-        email,
-        password,
-        name,
-      });
-      set({
-        user: response.data.user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-      await get().fetchShop();
-    } catch (error) {
-      set({
-        error:
-          error.response?.data?.message ||
-          error.message ||
-          "Error signing up",
-        isLoading: false,
-      });
-      throw error;
-    }
+  signup: async () => {
+    const error = new Error("Shop owner accounts must be created by an administrator.");
+    set({ error: error.message, isLoading: false });
+    throw error;
   },
 
   login: async (email, password) => {

@@ -23,6 +23,8 @@ const upload = multer({ storage });
 // GET: All food items for a specific shop (PUBLIC)
 router.get("/shop/:shopId", async (req, res) => {
   try {
+    const shop = await Shop.findOne({ _id: req.params.shopId, status: "approved" });
+    if (!shop) return res.status(404).json([]);
     const foods = await FoodItem.find({ shop: req.params.shopId }).populate("category");
     res.json(foods);
   } catch (error) {
@@ -33,8 +35,15 @@ router.get("/shop/:shopId", async (req, res) => {
 // GET: All food items (publicly accessible)
 router.get("/all", async (req, res) => {
   try {
-    const foods = await FoodItem.find().populate("category").populate("shop", "name");
-    res.json(foods);
+    const foods = await FoodItem.find()
+      .populate("category")
+      .populate({
+        path: "shop",
+        match: { status: "approved" },
+        select: "name location photo priceRange shopType status"
+      });
+    const approvedFoods = foods.filter(food => food.shop !== null);
+    res.json(approvedFoods);
   } catch (error) {
     console.error("Error fetching all foods:", error);
     res.status(500).json({ error: "Failed to fetch all food items." });
@@ -51,6 +60,26 @@ router.get("/categories/all", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch categories." });
   }
 });
+
+// GET: Get a single food item by ID (PUBLIC)
+router.get("/:id", async (req, res) => {
+  try {
+    const food = await FoodItem.findById(req.params.id)
+      .populate("category")
+      .populate({
+        path: "shop",
+        match: { status: "approved" },
+        select: "name location photo priceRange shopType contact activeTime description services"
+      });
+    if (!food || !food.shop) {
+      return res.status(404).json({ error: "Food item not found or associated shop is not approved." });
+    }
+    res.json(food);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // --- PRIVATE ROUTES ---
 

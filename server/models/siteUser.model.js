@@ -6,6 +6,11 @@ const siteUserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     name: { type: String, required: true },
     isVerified: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
     verificationToken: String,
     verificationTokenExpiresAt: Date,
     resetPasswordToken: String,

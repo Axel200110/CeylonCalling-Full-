@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { FaCamera, FaTimes } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
+import { FaCamera, FaTimes } from 'react-icons/fa';
 
 const backdropVariants = {
   hidden: { opacity: 0 },

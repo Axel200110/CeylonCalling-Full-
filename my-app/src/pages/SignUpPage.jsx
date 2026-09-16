@@ -79,12 +79,9 @@ const SiteUserSignUpPage = () => {
             Create Account
           </h1>
 
-          <div className="mt-2.5 space-y-0.5">
+          <div className="mt-2.5">
             <p className="text-sm font-medium text-slate-300/90 tracking-wide">
               Join Ceylon Calling and explore Sri Lanka
-            </p>
-            <p className="text-xs font-light text-slate-400/80 leading-normal antialiased">
-              Ceylon Calling සමඟ එක්වී ශ්‍රී ලංකාව සොයා ගන්න
             </p>
           </div>
         </div>
@@ -95,7 +92,7 @@ const SiteUserSignUpPage = () => {
           {/* Name Field Input Wrapper */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Full Name / සම්පූර්ණ නම
+              Full Name
             </label>
             <div className="relative group">
               <Input
@@ -114,7 +111,7 @@ const SiteUserSignUpPage = () => {
           {/* Email Field Input Wrapper */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Email Address / විද්‍යුත් තැපෑල
+              Email Address
             </label>
             <div className="relative group">
               <Input
@@ -133,7 +130,7 @@ const SiteUserSignUpPage = () => {
           {/* Password Field Input Wrapper */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Password / මුරපදය
+              Password
             </label>
             <div className="relative group">
               <Input
@@ -192,7 +189,9 @@ const SiteUserSignUpPage = () => {
                 Creating your profile...
               </span>
             ) : (
-              "Sign Up / ලියාපදිංචි වන්න"
+              <span className="flex items-center justify-center gap-1.5">
+                Sign Up
+              </span>
             )}
           </motion.button>
         </form>
@@ -200,12 +199,12 @@ const SiteUserSignUpPage = () => {
         {/* Footer Identity Redirection Wrapper */}
         <div className="mt-8 text-center border-t border-white/[0.06] pt-6">
           <p className="text-xs font-medium text-slate-400 tracking-wide">
-            Already have an account? / ගිණුමක් තිබේද?{" "}
+            Already have an account?{" "}
             <Link
               to="/user/login"
               className="inline-block ml-1 font-bold text-emerald-400 hover:text-emerald-300 transition-colors duration-150 decoration-emerald-500/30 hover:underline underline-offset-4"
             >
-              Login / පිවිසෙන්න
+              Login
             </Link>
           </p>
         </div>

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaLock } from 'react-icons/fa';
 import { useAuthStore } from '../store/authStore';
 
 const backdrop = {

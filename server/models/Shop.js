@@ -22,14 +22,32 @@ const shopSchema = new mongoose.Schema(
     photo: { 
       type: String 
     },
+    photos: [{
+      type: String
+    }],
+    categories: [{
+      type: String
+    }],
+    services: [{
+      type: String
+    }],
+    businessDescription: {
+      type: String,
+      trim: true
+    },
     priceRange: { 
       type: String, 
       trim: true 
     },
     shopType: { 
       type: String, 
-      enum: ['restaurant', 'small_food_shop', 'hotel'], 
+      enum: ['restaurant', 'small_food_shop', 'hotel', 'villa', 'guesthouse'], 
       required: true 
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'suspended'],
+      default: 'pending'
     },
     contact: { 
       type: String, 

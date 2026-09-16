@@ -1,8 +1,8 @@
 import express from "express";
+import { sessionAuth as userAuth } from "../middlewares/sessionAuth.js";
+import { sessionAuth } from "../middlewares/siteUserAuth.js";
 import Comment from "../models/comment.model.js";
 import Shop from "../models/Shop.js";
-import { sessionAuth } from "../middlewares/siteUserAuth.js";
-import { sessionAuth as userAuth } from "../middlewares/sessionAuth.js";
 const router = express.Router();
 
 // PUBLIC: Get all comments for a specific shop

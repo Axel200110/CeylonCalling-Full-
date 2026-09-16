@@ -19,12 +19,26 @@ const upload = multer({ storage });
 // --- NEW PUBLIC ENDPOINT ---
 router.get("/all", async (req, res) => {
   try {
-    const shops = await Shop.find().select("-owner -reviews"); // Exclude sensitive info if needed
+    const shops = await Shop.find({ status: "approved" }).select("-owner -reviews"); // Exclude sensitive info if needed
     res.json({ shops });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch shops" });
   }
 });
+
+// GET: Get a single approved shop by ID (PUBLIC)
+router.get("/:id", async (req, res) => {
+  try {
+    const shop = await Shop.findOne({ _id: req.params.id, status: "approved" }).select("-owner -reviews");
+    if (!shop) {
+      return res.status(404).json({ error: "Shop not found or not approved" });
+    }
+    res.json({ shop });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // GET: Get the current user's shop (PRIVATE)
 router.get("/my-shop", sessionAuth, async (req, res) => {

@@ -1,124 +1,180 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Lock, Loader, Eye, EyeOff, Home } from "lucide-react";
-import { Link } from "react-router-dom";
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, Sparkles } from "lucide-react";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { Link, useNavigate } from "react-router-dom";
+import Quiz from "../../assets/Restaurent.jpg";
 import { useAuthStore } from "../store/authStore";
 
-const LoginPage = () => {
+const ShopOwnerLoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const navigate = useNavigate();
   const { login, isLoading, error } = useAuthStore();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    await login(email, password);
+    try {
+      await login(email, password);
+      toast.success("Welcome back! Loading your dashboard...");
+      navigate("/dashboard");
+    } catch (err) {
+      // error handled by store
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-gray-100 to-gray-200 px-4"
-    >
-      <div className="w-full max-w-md rounded-3xl bg-white/80 backdrop-blur-xl shadow-2xl border border-gray-200 p-10 sm:p-12 relative">
-        {/* Home icon link */}
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8 overflow-hidden bg-slate-950">
+
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-1000 scale-105 pointer-events-none"
+        style={{ backgroundImage: `url(${Quiz})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/80 to-slate-950/40 mix-blend-multiply" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[3px]" />
+
+      {/* Ambient glow orbs */}
+      <div className="absolute top-1/4 left-1/3 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/3 translate-x-1/2 w-96 h-96 bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* Auth Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 70, damping: 15, mass: 0.8 }}
+        className="relative w-full max-w-[460px] rounded-[2rem] border border-white/[0.08] bg-white/[0.03] p-8 sm:p-10 md:p-12 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] backdrop-blur-2xl overflow-hidden"
+      >
+        {/* Top glass border */}
+        <div className="absolute inset-0 rounded-[2rem] border border-t-white/15 border-x-transparent border-b-transparent pointer-events-none" />
+
+        {/* Back button */}
         <Link
           to="/shopform"
-          className="absolute top-4 left-4 text-gray-600 hover:text-black transition"
-          title="Go to Shop Form"
+          className="group absolute top-6 left-6 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white"
+          title="Go Back"
         >
-          <Home className="w-6 h-6" />
+          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
         </Link>
 
-        <h1 className="text-4xl font-semibold text-gray-900 mb-8 text-center tracking-tight">
-          Welcome Back
-        </h1>
+        {/* Brand header */}
+        <div className="mt-4 flex flex-col items-center text-center">
+          <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
+            <Sparkles className="text-emerald-400 w-3 h-3" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">
+              Ceylon Calling
+            </span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Welcome Back
+          </h1>
+          <p className="mt-2.5 text-sm font-medium text-slate-300/90 tracking-wide">
+            Sign in to manage your active store profile
+          </p>
+        </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          {/* Email Input */}
-          <div className="relative">
-            <Mail className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 text-gray-800 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-            />
+        {/* Error message */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 p-3 text-sm text-rose-400"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </motion.div>
+        )}
+
+        {/* Login form */}
+        <form onSubmit={handleLogin} className="mt-9 space-y-5">
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Email Address
+            </label>
+            <div className="relative group">
+              <div className="absolute left-4 top-3.5 flex items-center justify-center text-slate-400 group-focus-within:text-emerald-400 transition-colors duration-200">
+                <Mail className="w-4 h-4" />
+              </div>
+              <input
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+                className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-white/5 bg-white/[0.03] text-white placeholder-slate-500 text-sm transition-all duration-200 focus:bg-white/[0.05] focus:border-emerald-500/40 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none"
+              />
+            </div>
           </div>
 
-          {/* Password Input with toggle */}
-          <div className="relative">
-            <Lock className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              className="w-full pl-10 pr-10 py-3 rounded-xl bg-gray-50 text-gray-800 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-800 focus:outline-none"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+          {/* Password */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                Forgot?
+              </Link>
+            </div>
+            <div className="relative group">
+              <div className="absolute left-4 top-3.5 flex items-center justify-center text-slate-400 group-focus-within:text-emerald-400 transition-colors duration-200">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                className="w-full pl-11 pr-11 py-3.5 rounded-xl border border-white/5 bg-white/[0.03] text-white placeholder-slate-600 text-sm transition-all duration-200 focus:bg-white/[0.05] focus:border-emerald-500/40 focus:ring-4 focus:ring-emerald-500/10 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-colors duration-150"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
-          {/* Forgot password */}
-          <div className="flex justify-end text-sm">
-            <Link
-              to="/forgot-password"
-              className="text-gray-600 hover:text-blue-600 transition"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <p className="text-center text-red-500 font-medium text-sm">
-              {error}
-            </p>
-          )}
-
-          {/* Submit Button */}
+          {/* Submit button */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.01, y: -0.5 }}
+            whileTap={{ scale: 0.99 }}
             type="submit"
             disabled={isLoading}
-            className="w-full bg-black text-white font-semibold rounded-xl py-3 shadow-md hover:bg-gray-900 transition duration-300 flex justify-center items-center"
+            className="relative w-full mt-2 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3.5 text-sm font-semibold tracking-wide text-white shadow-[0_20px_40px_-10px_rgba(16,185,129,0.3)] transition-all duration-300 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:pointer-events-none"
           >
             {isLoading ? (
-              <Loader className="w-6 h-6 animate-spin" />
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Authenticating...
+              </span>
             ) : (
-              "Login"
+              <span className="flex items-center justify-center gap-1.5">
+                Sign In to Dashboard
+              </span>
             )}
           </motion.button>
         </form>
 
-        {/* Footer */}
-        <p className="mt-8 text-center text-gray-500 text-sm">
-          Don’t have an account?{" "}
-          <Link
-            to="/signup"
-            className="font-semibold text-blue-600 hover:text-blue-800 transition"
-          >
-            Sign up
-          </Link>
+        <p className="mt-8 text-center text-sm text-slate-400">
+          New accounts are created by the administrator. Please contact your admin if you need access.
         </p>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 
-export default LoginPage;
+export default ShopOwnerLoginPage;

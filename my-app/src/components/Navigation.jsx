@@ -1,8 +1,10 @@
 import { AnimatePresence, motion, useScroll } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { Link as ScrollLink } from "react-scroll";
 import Logo from "../assets/Lion.jpg";
+import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
 
 // Icons
 import {
@@ -12,6 +14,7 @@ import {
   Globe,
   Instagram,
   LogIn,
+  LogOut,
   Mail,
   Menu,
   Moon,
@@ -32,25 +35,32 @@ export default function Navigation() {
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
 
+  // Connect Zustand Global Auth Store State & Actions
+  const { isAuthenticated, logout } = useSiteUserAuthStore();
+
   // Multi-Language Structural Matrix (Localized Dictionary strings)
   const translations = useMemo(() => ({
     en: {
       home: "Home",
       about: "About",
+      join: "Join Us",
       contact: "Contact",
-      vendor: "Vendor Login",
+      vendor: "Shop Login",
       explore: "Explore Places",
-      login: "Login",
+      login: "User Login",
+      logout: "Log Out",
       languageName: "English",
       switchLang: "සිංහල"
     },
     si: {
       home: "මුල් පිටුව",
       about: "අප ගැන",
+      join: "එක්වන්න",
       contact: "සම්බන්ධ වන්න",
       vendor: "විකුණුම්කරු පිවිසුම",
       explore: "ගවේෂණය කරන්න",
-      login: "පරිශීලක ලියාපදිංචිය",
+      login: "පරිශීලක පිවිසුම",
+      logout: "නික්ම වන්න",
       languageName: "සිංහල",
       switchLang: "English"
     }
@@ -59,9 +69,13 @@ export default function Navigation() {
   // Navigation Links Memo Grid mapping exact component IDs
   const navLinks = useMemo(() => [
     { id: "header", label: translations[lang].home },
+    { label: "Places", path: "/shops" },
+    { label: "Foods", path: "/foods" },
     { id: "about", label: translations[lang].about },
+    { id: "join", label: translations[lang].join }, 
     { id: "contact", label: translations[lang].contact },
   ], [lang, translations]);
+
 
   const socialLinks = useMemo(() => [
     { href: "https://facebook.com/ceyloncalling", icon: <Facebook className="w-3.5 h-3.5" />, aria: "Go to Ceylon Calling Facebook Page" },
@@ -110,6 +124,36 @@ export default function Navigation() {
     setLang((prev) => (prev === "en" ? "si" : "en"));
   };
 
+  // Centralized Dynamic Auth Routing and Action Trigger Handler with Advanced Toast
+  const handleAuthAction = async () => {
+    if (isAuthenticated) {
+      await toast.promise(
+        (async () => {
+          await logout();
+          navigate("/");
+        })(),
+        {
+          loading: 'Terminating session securely...',
+          success: (
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-slate-900 text-sm">Logged Out Safely</span>
+              <span className="text-xs text-slate-400 font-medium">Your active session cache has been cleared.</span>
+            </div>
+          ),
+          error: 'Failed to terminate session safely.',
+        },
+        {
+          success: {
+            duration: 4000,
+            icon: '🔒',
+          }
+        }
+      );
+    } else {
+      navigate("/user/login");
+    }
+  };
+
   return (
     <>
       {/* High-Fidelity Progress Indicator Bar */}
@@ -125,7 +169,7 @@ export default function Navigation() {
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           scrolled 
-            ? "py-2.5 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/40 dark:border-slate-800/40 shadow-[0_4px_30px_rgba(0,0,0,0.02)] backdrop-blur-xl" 
+            ? "py-2.5 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/40 dark:border-slate-800/40 shadow-[0_4px_30_rgba(0,0,0,0.02)] backdrop-blur-xl" 
             : "py-4 bg-transparent border-b border-transparent backdrop-blur-none"
         }`}
       >
@@ -164,20 +208,31 @@ export default function Navigation() {
           {/* CENTER: Minimalist Desktop Navigation Rail Tracks */}
           <div className="hidden lg:flex items-center gap-1 bg-neutral-100/60 dark:bg-slate-800/40 p-1 rounded-full border border-neutral-200/20 dark:border-slate-700/20">
             {navLinks.map((item) => (
-              <ScrollLink
-                key={item.id}
-                to={item.id}
-                smooth={true}
-                duration={500}
-                spy={true}
-                offset={-80}
-                activeClass="!text-emerald-700 dark:!text-emerald-400 bg-white dark:bg-slate-900 shadow-[0_2px_6px_rgba(0,0,0,0.03)] font-medium"
-                className="relative px-4 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full cursor-pointer transition-all duration-200 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              >
-                <span className="relative z-10">{item.label}</span>
-              </ScrollLink>
+              item.path ? (
+                <button
+                  key={item.label}
+                  onClick={() => navigate(item.path)}
+                  className="relative px-4 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full cursor-pointer transition-all duration-200 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 border-none bg-transparent font-medium"
+                >
+                  <span className="relative z-10">{item.label}</span>
+                </button>
+              ) : (
+                <ScrollLink
+                  key={item.id}
+                  to={item.id}
+                  smooth={true}
+                  duration={500}
+                  spy={true}
+                  offset={-80}
+                  activeClass="!text-emerald-700 dark:!text-emerald-400 bg-white dark:bg-slate-900 shadow-[0_2px_6px_rgba(0,0,0,0.03)] font-medium"
+                  className="relative px-4 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full cursor-pointer transition-all duration-200 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <span className="relative z-10">{item.label}</span>
+                </ScrollLink>
+              )
             ))}
           </div>
+
 
           {/* RIGHT: High-Fidelity Utility & CTA Matrix Grid */}
           <div className="hidden lg:flex items-center gap-3">
@@ -217,26 +272,28 @@ export default function Navigation() {
 
             {/* Secondary CTA Outlined Button Link */}
             <button
-              onClick={() => navigate("/shop-login")}
-              className="group flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-slate-800 hover:border-neutral-900 dark:hover:border-slate-400 rounded-full transition-all duration-200 focus:outline-none"
+              onClick={() => navigate("/login")}
+              className="group flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] bg-white font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-slate-800 hover:border-neutral-900 dark:hover:border-slate-400 rounded-full transition-all duration-200 focus:outline-none"
             >
               <Store size={12} className="text-neutral-400" />
               <span>{translations[lang].vendor}</span>
               <ArrowUpRight size={11} className="text-neutral-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-150" />
             </button>
 
-            {/* INTEGRATED DESKTOP LOGIN BUTTON */}
+            {/* INTEGRATED DYNAMIC DESKTOP AUTH BUTTON */}
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/user/login")}
-              className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
-                scrolled
-                  ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                  : "bg-white text-slate-900 shadow-sm hover:bg-slate-50 border border-neutral-200 dark:border-slate-800"
+              onClick={handleAuthAction}
+              className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-200 focus:outline-none focus:ring-2 ${
+                isAuthenticated 
+                  ? "bg-red-500/10 border border-red-500/20 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 shadow-sm"
+                  : scrolled
+                    ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    : "bg-white text-slate-900 shadow-sm hover:bg-slate-50 border border-neutral-200 dark:border-slate-800"
               }`}
             >
-              <LogIn size={12} />
-              <span>{translations[lang].login}</span>
+              {isAuthenticated ? <LogOut size={12} /> : <LogIn size={12} />}
+              <span>{isAuthenticated ? translations[lang].logout : translations[lang].login}</span>
             </motion.button>
 
             {/* Primary Modern Gradient CTA Action Button */}
@@ -298,24 +355,37 @@ export default function Navigation() {
                 >
                   {navLinks.map((item) => (
                     <motion.li 
-                      key={item.id}
+                      key={item.id || item.label}
                       variants={{
                         open: { y: 0, opacity: 1 },
                         closed: { y: 8, opacity: 0 }
                       }}
                     >
-                      <ScrollLink
-                        to={item.id}
-                        smooth={true}
-                        duration={500}
-                        offset={-70}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-emerald-600 py-2.5 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-900/60 transition-colors"
-                      >
-                        {item.label}
-                      </ScrollLink>
+                      {item.path ? (
+                        <button
+                          onClick={() => {
+                            navigate(item.path);
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full text-left block text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-emerald-600 py-2.5 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-900/60 transition-colors border-none bg-transparent"
+                        >
+                          {item.label}
+                        </button>
+                      ) : (
+                        <ScrollLink
+                          to={item.id}
+                          smooth={true}
+                          duration={500}
+                          offset={-70}
+                          onClick={() => setIsMenuOpen(false)}
+                          className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-emerald-600 py-2.5 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-900/60 transition-colors"
+                        >
+                          {item.label}
+                        </ScrollLink>
+                      )}
                     </motion.li>
                   ))}
+
                 </motion.ul>
 
                 <div className="h-px bg-neutral-100 dark:bg-slate-800/80" />
@@ -335,7 +405,7 @@ export default function Navigation() {
 
                   <button
                     onClick={() => {
-                      navigate("/shop-login");
+                      navigate("/login");
                       setIsMenuOpen(false);
                     }}
                     className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-neutral-200 dark:border-slate-800 text-neutral-800 dark:text-neutral-200 font-medium text-xs hover:bg-neutral-50 dark:hover:bg-slate-900 transition-colors"
@@ -344,21 +414,23 @@ export default function Navigation() {
                     <span>{translations[lang].vendor}</span>
                   </button>
 
-                  {/* Safely placed & fixed Mobile Login Button */}
+                  {/* DYNAMIC MOBILE AUTH ACTION BUTTON */}
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      navigate("/user/login");
+                      handleAuthAction();
                       setIsMenuOpen(false);
                     }}
-                    className={`flex items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${
-                      scrolled || isMenuOpen
-                        ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                        : "bg-white text-slate-900 shadow-md hover:bg-slate-50"
+                    className={`flex items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 ${
+                      isAuthenticated
+                        ? "bg-red-50 text-red-600 hover:bg-red-100/70 dark:bg-red-950/20 dark:text-red-400"
+                        : scrolled || isMenuOpen
+                          ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
+                          : "bg-white text-slate-900 shadow-md hover:bg-slate-50"
                     }`}
                   >
-                    <LogIn size={14} />
-                    <span>{translations[lang].login}</span>
+                    {isAuthenticated ? <LogOut size={14} /> : <LogIn size={14} />}
+                    <span>{isAuthenticated ? translations[lang].logout : translations[lang].login}</span>
                   </motion.button>
                 </div>
 

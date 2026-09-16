@@ -1,14 +1,14 @@
-import {
-  FaHeart,
-  FaRegHeart,
-  FaMapMarkerAlt,
-  FaDirections,
-  FaInfoCircle,
-} from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import axios from "axios";
+import {
+    FaDirections,
+    FaHeart,
+    FaInfoCircle,
+    FaMapMarkerAlt,
+    FaRegHeart,
+} from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 function PlaceCard({ place, categories = [], currentUserId }) {
   const navigate = useNavigate();
@@ -47,8 +47,7 @@ function PlaceCard({ place, categories = [], currentUserId }) {
 
   return (
     <motion.article
-      className="max-w-md md:max-w-lg bg-gray-300 rounded-3xl shadow-lg shadow-white mx-auto my-6 overflow-hidden cursor-default select-none
-        sm:hover:shadow-2xl transition-shadow duration-300"
+      className="max-w-md md:max-w-lg bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-md mx-auto my-6 overflow-hidden cursor-default select-none transition-transform duration-300 hover:scale-[1.01]"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -58,7 +57,7 @@ function PlaceCard({ place, categories = [], currentUserId }) {
     >
       {/* Header */}
       <header className="flex items-center gap-4 p-5">
-        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-pink-500 shadow-md flex-shrink-0">
+        <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 shadow-sm flex-shrink-0">
           <img
             src={mainImage.startsWith("/uploads/") ? `http://localhost:5000${mainImage}` : mainImage}
             alt={place.title}
@@ -81,16 +80,16 @@ function PlaceCard({ place, categories = [], currentUserId }) {
         <img
           src={mainImage.startsWith("/uploads/") ? `http://localhost:5000${mainImage}` : mainImage}
           alt={place.title}
-          className="w-full aspect-square object-cover"
+          className="w-full h-40 sm:h-64 object-cover rounded-b-2xl"
           loading="lazy"
           decoding="async"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-50 transition-opacity duration-300 rounded-b-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300 rounded-b-2xl" />
       </div>
 
       {/* Description & Categories */}
       <div className="p-5 space-y-4">
-        <p className="text-gray-700 text-sm line-clamp-3">
+        <p className="text-slate-700 text-sm line-clamp-3">
           {place.description || "No description available."}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -98,13 +97,13 @@ function PlaceCard({ place, categories = [], currentUserId }) {
             categories.map((cat) => (
               <span
                 key={cat._id}
-                className="text-pink-600 text-xs font-semibold px-3 py-1 border border-pink-400 rounded-full select-none"
+                className="text-slate-700 text-xs font-semibold px-3 py-1 border border-slate-100 rounded-full select-none bg-white/60"
               >
                 {cat.name}
               </span>
             ))
           ) : (
-            <span className="text-gray-400 text-xs px-3 py-1 rounded-full select-none border border-gray-300">
+            <span className="text-slate-400 text-xs px-3 py-1 rounded-full select-none border border-slate-100">
               No categories
             </span>
           )}
@@ -112,9 +111,9 @@ function PlaceCard({ place, categories = [], currentUserId }) {
       </div>
 
       {/* Footer */}
-      <footer className="flex items-center justify-between px-5 py-4 border-t border-gray-200">
+      <footer className="flex flex-col sm:flex-row items-center sm:justify-between px-5 py-4 border-t border-slate-100 bg-white gap-3">
         {/* Like Button */}
-        <button
+          <button
           onClick={handleLike}
           aria-pressed={liked}
           aria-label={liked ? "Unlike this place" : "Like this place"}
@@ -133,12 +132,12 @@ function PlaceCard({ place, categories = [], currentUserId }) {
           <span className="text-sm font-medium select-none">
             {likeCount} {likeCount === 1 ? "like" : "likes"}
           </span>
-        </button>
+          </button>
 
         {/* Directions */}
         <button
           type="button"
-          className="flex items-center gap-1 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded transition px-2 py-1"
+          className="flex w-full sm:w-auto items-center justify-center gap-1 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded transition px-2 py-2 sm:px-2 sm:py-1"
           aria-label="Get directions"
         >
           <FaDirections className="text-lg" />
@@ -149,7 +148,7 @@ function PlaceCard({ place, categories = [], currentUserId }) {
         <button
           type="button"
           onClick={() => navigate(`/places/${place._id}`)}
-          className="flex items-center gap-1 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded transition px-2 py-1"
+          className="flex w-full sm:w-auto items-center justify-center gap-1 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-300 rounded transition px-2 py-2 sm:px-2 sm:py-1"
           aria-label={`View details for ${place.title}`}
         >
           <FaInfoCircle className="text-lg" />

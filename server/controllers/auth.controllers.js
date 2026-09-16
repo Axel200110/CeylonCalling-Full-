@@ -3,56 +3,19 @@ import crypto from "crypto";
 import {
   sendPasswordResetEmail,
   sendResetSuccessEmail,
-  sendVerificationEmail,
-  sendWelcomeEmail,
+  sendWelcomeEmail
 } from "../mailtrap/emails.js";
+import Shop from "../models/Shop.js";
 import { User } from "../models/user.model.js";
 
 // ============================
 // SIGNUP CONTROLLER
 // ============================
 export const signup = async (req, res) => {
-  const { email, password, name } = req.body;
-
-  try {
-    if (!email || !password || !name) {
-      throw new Error("All fields are required");
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: "User already exists" });
-    }
-
-    const hashedPassword = await bcryptjs.hash(password, 10);
-    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      name,
-      verificationToken,
-      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
-    });
-
-    // Create session
-    req.session.userId = user._id;
-    req.session.isVerified = user.isVerified;
-    await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
-
-    await sendVerificationEmail(user.email, verificationToken);
-
-    res.status(201).json({
-      success: true,
-      message: "User created successfully",
-      user: {
-        ...user._doc,
-        password: undefined,
-      },
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
+  return res.status(403).json({
+    success: false,
+    message: "Shop owner accounts must be created by an administrator.",
+  });
 };
 
 // ============================
@@ -112,6 +75,16 @@ export const login = async (req, res) => {
     const isMatch = await bcryptjs.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
+
+    if (user.role === "partner") {
+      const shop = await Shop.findOne({ owner: user._id });
+      if (!shop || shop.status !== "approved") {
+        return res.status(401).json({
+          success: false,
+          message: "Your account is not approved yet. Please wait for administrator approval.",
+        });
+      }
     }
 
     user.lastLogin = new Date();

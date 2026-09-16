@@ -17,6 +17,9 @@ import commentRoutes from "./routes/comment.route.js"
 import placesRoutes from "./routes/place.route.js"
 import placeCategory from "./routes/place.catego.route.js";
 import Placecomm from "./routes/pcomment.route.js";
+import partnerRoutes from "./routes/partnerRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -79,6 +82,9 @@ app.use("/api/comments",commentRoutes);
 app.use("/api/place",placesRoutes);
 app.use("/api/placecat",placeCategory);
 app.use("/api/placecomment",Placecomm);
+app.use("/api/partners", partnerRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/messages", messageRoutes);
 
 // Production client serve
 if (process.env.NODE_ENV === "production") {

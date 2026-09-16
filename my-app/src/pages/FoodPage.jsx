@@ -1,13 +1,11 @@
 // ✅ Full responsive & paginated FoodList component with comment section
 
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiSearch } from "react-icons/fi";
 import { FaTag } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
-import SearchBar from "../components/SearchBar";
-import Navbar from "../components/SideNavbar";
+import { useNavigate } from "react-router-dom";
 import ComentSec from "../components/CommentSec";
+import SearchBar from "../components/SearchBar";
 
 // Category Pills
 function CategoryPill({ category, selected, onClick }) {
@@ -44,20 +42,17 @@ function FoodCard({ food, idx }) {
       <img
         src={imageUrl || "https://via.placeholder.com/160x192?text=No+Image"}
         alt={food.name}
-        className="w-full sm:w-40 h-48 object-cover sm:rounded-l-2xl"
+        className="w-full sm:w-40 h-36 sm:h-48 object-cover sm:rounded-l-2xl"
         onError={(e) => {
           e.target.src = "https://via.placeholder.com/160x192?text=Error";
         }}
       />
       <div className="flex flex-col justify-between p-4 flex-1">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-1">
             <span className="text-lg font-bold text-gray-800">{food.name}</span>
-            <span className="ml-auto text-blue-600 font-semibold">
-              {Number(food.price).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              })}
+            <span className="ml-0 sm:ml-auto text-emerald-600 font-semibold">
+              LKR {Number(food.price || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <span className="text-xs text-gray-400">
@@ -233,9 +228,9 @@ export default function FoodList({ shopId }) {
           <div className="text-center py-16 text-gray-400">No matching foods found.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedFoods.map((food, idx) => (
-              <FoodCard key={food._id} food={food} idx={idx} />
-            ))}
+              {paginatedFoods.map((food, idx) => (
+                <FoodCard key={food._id} food={food} idx={idx} />
+              ))}
           </div>
         )}
 

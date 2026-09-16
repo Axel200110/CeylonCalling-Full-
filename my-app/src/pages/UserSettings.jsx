@@ -1,131 +1,128 @@
-import React, { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
 import {
-  FaUserCircle,
+  FaArrowLeft,
+  FaChevronRight,
   FaLock,
-  FaBell,
-  FaPalette,
-  FaSignOutAlt,
+  FaUserCircle
 } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import Navbar from '../components/SideNavbar';
 import { useNavigate } from 'react-router-dom';
-import { useSiteUserAuthStore } from '../store/siteUserAuthStore';
 import ChangePassword from '../components/ChangePasswordModel';
+import Navigation from '../components/NavigationPage';
 import UpdateProfile from '../components/UpdateProfileModel';
+import { useSiteUserAuthStore } from '../store/siteUserAuthStore';
 
 const containerVariants = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: 'easeOut' },
-  },
-};
-
-const buttonVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: (i) => ({
-    opacity: 1,
-    x: 0,
-    transition: { delay: i * 0.1, duration: 0.4, ease: 'easeOut' },
-  }),
+    transition: { duration: 0.4, ease: [0.215, 0.610, 0.355, 1.0] }
+  }
 };
 
 function UserSettings() {
-  const { logout, user } = useSiteUserAuthStore();
+  const { user } = useSiteUserAuthStore();
   const navigate = useNavigate();
 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showUpdateProfile, setShowUpdateProfile] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
   const settingsOptions = [
     {
-      icon: <FaUserCircle className="text-2xl sm:text-3xl text-blue-600" />,
-      title: 'Profile',
-      description: 'Update your user information',
-      ringColor: 'focus:ring-blue-500',
+      icon: <FaUserCircle className="text-xl sm:text-2xl text-emerald-600" />,
+      title: 'Profile Settings',
+      description: 'Update your personal details, name, and contact details.',
+      ringColor: 'focus:ring-emerald-500/20 focus:border-emerald-500',
+      bgColor: 'bg-emerald-50/40',
       onClick: () => setShowUpdateProfile(true),
     },
     {
-      icon: <FaLock className="text-2xl sm:text-3xl text-purple-600" />,
-      title: 'Change Password',
-      description: 'Update your password regularly',
-      ringColor: 'focus:ring-purple-500',
+      icon: <FaLock className="text-xl sm:text-2xl text-red-00" />,
+      title: 'Security & Password',
+      description: 'Update your login credentials and secure your account access.',
+      ringColor: 'focus:ring-blue-500/20 focus:border-blue-500',
+      bgColor: 'bg-white',
       onClick: () => setShowChangePassword(true),
-    },
-    {
-      icon: <FaBell className="text-2xl sm:text-3xl text-yellow-500" />,
-      title: 'Notifications',
-      description: 'Manage notification preferences',
-      ringColor: 'focus:ring-yellow-400',
-      onClick: () => {},
-    },
-    {
-      icon: <FaPalette className="text-2xl sm:text-3xl text-pink-500" />,
-      title: 'Theme',
-      description: 'Switch between light and dark mode',
-      ringColor: 'focus:ring-pink-500',
-      onClick: () => {},
-    },
-    {
-      icon: <FaSignOutAlt className="text-2xl sm:text-3xl text-red-600" />,
-      title: 'Logout',
-      description: 'Sign out of your account',
-      ringColor: 'focus:ring-red-500',
-      isLogout: true,
-      onClick: handleLogout,
     },
   ];
 
   return (
-    <div className="relative min-h-screen bg-gray-50 flex flex-col justify-center items-center py-8 px-2 sm:py-12 sm:px-6 lg:px-8 overflow-hidden">
-      <motion.div
-        className="w-full max-w-lg sm:max-w-2xl md:max-w-3xl bg-white bg-opacity-90 rounded-xl shadow-xl p-5 sm:p-10 backdrop-blur-md"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <h2 className="text-xl sm:text-3xl font-extrabold mb-6 sm:mb-10 text-gray-900 text-center lowercase sm:normal-case">
-          settings
-        </h2>
-        <div className="space-y-3 sm:space-y-6">
-          {settingsOptions.map((option, index) => (
+    <div className="flex min-h-screen bg-slate-50/60 font-sans antialiased text-slate-800 selection:bg-emerald-500/10">
+      {/* Persistent Left Sidebar Workspace Layer */}
+      <Navigation />
+
+      {/* Main Container Core Layout Context */}
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-24 md:py-12 md:pl-24 lg:pl-12 transition-all duration-300">
+        
+        {/* Dynamic Contextual Header Row with Back Button Action */}
+        <div className="mb-8 border-b border-slate-200/60 pb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Account Preferences
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm text-slate-400 font-medium">
+              Manage your personal profile and secure credentials.
+            </p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => navigate('/discover')}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:bg-slate-100 transition focus:outline-none focus:ring-4 focus:ring-slate-500/10"
+          >
+            <FaArrowLeft className="text-xs" />
+            <span>Back</span>
+          </button>
+        </div>
+
+        {/* Dynamic Card Options Presentation List Frame */}
+        <motion.div 
+          className="space-y-3 sm:space-y-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {settingsOptions.map((option) => (
             <motion.button
               key={option.title}
               type="button"
-              custom={index}
-              variants={buttonVariants}
-              initial="hidden"
-              animate="visible"
+              variants={itemVariants}
               onClick={option.onClick}
-              className={`w-full flex items-center gap-3 sm:gap-6 p-3 sm:p-5 rounded-lg hover:bg-gray-100 transition focus:outline-none focus:ring-2 ${option.ringColor} ${
-                option.isLogout ? 'hover:bg-red-50' : ''
-              }`}
+              className={`group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/70 shadow-sm transition-all duration-200 text-left hover:border-slate-300 hover:shadow-md/10 focus:outline-none focus:ring-4 ${option.ringColor}`}
             >
-              {option.icon}
-              <div className="text-left">
-                <p
-                  className={`text-sm sm:text-lg font-semibold ${
-                    option.isLogout ? 'text-red-600' : 'text-gray-800'
-                  } lowercase sm:normal-case`}
-                >
-                  {option.title}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-500 lowercase sm:normal-case">{option.description}</p>
+              <div className="flex items-center gap-4 sm:gap-5">
+                {/* Micro Container Icon Setup */}
+                <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${option.bgColor}`}>
+                  {option.icon}
+                </div>
+                
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold tracking-tight text-slate-800">
+                    {option.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5 leading-normal">
+                    {option.description}
+                  </p>
+                </div>
               </div>
+
+              {/* Functional Indicator Arrow Icon */}
+              <FaChevronRight className="text-xs text-slate-300 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-slate-500" />
             </motion.button>
           ))}
-        </div>
-      </motion.div>
+        </motion.div>
+      </main>
 
-      <Navbar />
-
-      {/* Modals */}
+      {/* Shared Application Context Overlays Container */}
       <AnimatePresence>
         {showUpdateProfile && (
           <UpdateProfile user={user} onClose={() => setShowUpdateProfile(false)} />

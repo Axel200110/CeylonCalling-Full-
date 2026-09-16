@@ -1,17 +1,17 @@
+import axios from "axios";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import {
-  FaHeart,
-  FaRegHeart,
-  FaMapMarkerAlt,
-  FaDirections,
-  FaUtensils,
-  FaPhoneAlt,
-  FaClock,
-  FaInfoCircle,
+    FaClock,
+    FaDirections,
+    FaHeart,
+    FaInfoCircle,
+    FaMapMarkerAlt,
+    FaPhoneAlt,
+    FaRegHeart,
+    FaUtensils,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
-import axios from "axios";
 
 function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
   const navigate = useNavigate();
@@ -79,15 +79,15 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
 
   return (
     <motion.article
-      className="max-w-md bg-gray-300 rounded-3xl shadow-lg shadow-white mx-auto my-6 overflow-hidden cursor-default select-none"
-      initial={{ opacity: 0, y: 15 }}
+      className="max-w-md bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-md mx-auto my-6 overflow-hidden cursor-default select-none transition-transform duration-300 hover:scale-[1.01]"
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      whileHover={{ scale: 1.02, boxShadow: "0 10px 30px rgba(0,0,0,0.15)" }}
+      transition={{ duration: 0.36 }}
+      whileHover={{ scale: 1.02 }}
     >
       {/* Shop Header */}
       <header className="flex items-center gap-4 p-4">
-        <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-green-500 shadow-md">
+        <div className="w-14 h-14 rounded-full overflow-hidden border border-slate-100 shadow-sm">
           <img
             src={mainImage}
             alt={shop.name}
@@ -109,10 +109,10 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
         <img
           src={mainImage}
           alt={shop.name}
-          className="w-full aspect-square object-cover"
+          className="w-full h-48 sm:h-64 object-cover rounded-b-2xl"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-50 transition-opacity duration-300 rounded-b-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300 rounded-b-2xl" />
       </div>
 
       {/* Shop Details */}
@@ -148,13 +148,13 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
             categories.map((cat) => (
               <span
                 key={cat._id}
-                className="text-green-600 text-xs font-semibold px-3 py-1 border border-green-400 rounded-full cursor-default select-none"
+                className="text-slate-700 text-xs font-semibold px-3 py-1 border border-slate-100 rounded-full cursor-default select-none bg-white/60"
               >
                 {cat.name}
               </span>
             ))
           ) : (
-            <span className="text-gray-400 text-xs px-3 py-1 rounded-full select-none border border-gray-300">
+            <span className="text-slate-400 text-xs px-3 py-1 rounded-full select-none border border-slate-100">
               No categories
             </span>
           )}
@@ -162,7 +162,7 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
       </div>
 
       {/* Action Buttons */}
-      <footer className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+      <footer className="flex flex-col sm:flex-row items-center sm:justify-between px-4 py-3 border-t border-slate-100 bg-white gap-3">
         {/* Like Button */}
         <div className="flex items-center gap-2">
           <button
@@ -170,9 +170,9 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
             disabled={likeLoading}
             aria-pressed={liked}
             aria-label={liked ? "Unlike this shop" : "Like this shop"}
-           className={`flex items-center gap-2 text-pink-500 hover:text-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded transition ${
-            likeLoading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+            className={`flex items-center gap-2 text-pink-500 hover:text-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-300 rounded transition ${
+              likeLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <motion.span
               animate={{
@@ -200,7 +200,7 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
         {/* Directions Button */}
         <button
           type="button"
-          className="flex items-center gap-1 text-gray-700 hover:text-gray-900 transition"
+          className="flex w-full sm:w-auto items-center justify-center gap-1 text-gray-700 hover:text-gray-900 transition px-2 py-2 sm:px-2 sm:py-1"
         >
           <FaDirections className="text-lg" />
           <span className="text-sm font-medium hidden sm:inline">Directions</span>
@@ -210,7 +210,7 @@ function RestaurantCard({ shop, categories = [], currentUserId, onViewMenu }) {
         <button
           type="button"
           onClick={() => navigate(`/foodpage/${shop._id}`)} 
-          className="flex items-center gap-1 text-gray-700 hover:text-blue-600 transition"
+          className="flex w-full sm:w-auto items-center justify-center gap-1 text-gray-700 hover:text-blue-600 transition px-2 py-2 sm:px-2 sm:py-1"
         >
           <FaUtensils className="text-lg text-blue-500" />
           <span className="text-sm font-medium hidden sm:inline">View Menu</span>
