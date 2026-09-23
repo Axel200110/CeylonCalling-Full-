@@ -574,7 +574,7 @@ const ApprovedDashboard = ({ shop: initialShop, user, onLogout }) => {
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight capitalize">{shop?.name}</h2>
                 <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400 pt-1">
-                  {shop?.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400" />{shop.location}</span>}
+                  {locationText && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400" />{locationText}</span>}
                   {shop?.contact && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400" />{shop.contact}</span>}
                   <span className="flex items-center gap-1.5">
                     <Store className="w-3.5 h-3.5 text-emerald-400" />
