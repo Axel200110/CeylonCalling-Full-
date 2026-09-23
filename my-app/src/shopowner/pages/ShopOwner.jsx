@@ -431,7 +431,17 @@ const ApprovedDashboard = ({ shop: initialShop, user, onLogout }) => {
 
   const isAccommodation =
     shop?.capabilities?.hasAccommodation ||
-    ["hotel", "villa", "guesthouse"].includes(shop?.shopType?.toLowerCase());
+    ["hotel", "villa", "guesthouse"].includes(String(shop?.shopType || "").toLowerCase());
+
+  const locationText = [
+    shop?.location?.address,
+    shop?.location?.city,
+    shop?.location?.district,
+    shop?.location?.province,
+    typeof shop?.location === "string" ? shop.location : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   if (loadingData && !dashboardStats) {
     return (
@@ -473,7 +483,7 @@ const ApprovedDashboard = ({ shop: initialShop, user, onLogout }) => {
               <span className="text-neutral-600">•</span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold">
                 <MapPin className="w-3 h-3" />
-                {shop?.addressDetails?.district || (shop?.location?.toLowerCase().includes("polonnaruwa") ? "Polonnaruwa" : "Anuradhapura")}
+                {shop?.addressDetails?.district || (locationText.toLowerCase().includes("polonnaruwa") ? "Polonnaruwa" : "Anuradhapura")}
                 {shop?.addressDetails?.city ? ` &bull; ${shop.addressDetails.city}` : ''}
               </span>
             </div>
