@@ -81,6 +81,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 const isProduction = process.env.NODE_ENV === "production";
+const useSecureCookies = process.env.COOKIE_SECURE === "true";
 
 app.use(
   session({
@@ -95,8 +96,8 @@ app.use(
     cookie: {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
+      secure: useSecureCookies,
+      sameSite: useSecureCookies ? "none" : "lax",
     },
   })
 );
@@ -145,7 +146,7 @@ app.use(
   })
 );
 
-app.get("/", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     status: "Server running",
     session: req.session,
