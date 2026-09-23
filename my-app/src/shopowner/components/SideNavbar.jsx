@@ -51,7 +51,7 @@ function SidebarNavigation() {
 
   const isAccommodation =
     shop?.capabilities?.hasAccommodation ||
-    ["hotel", "villa", "guesthouse"].includes(shop?.shopType?.toLowerCase());
+    ["hotel", "villa", "guesthouse"].includes(String(shop?.shopType || "").toLowerCase());
 
   const structuralGroups = [
     {
