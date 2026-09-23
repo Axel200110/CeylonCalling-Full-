@@ -17,7 +17,7 @@ export const sendWelcomeEmail = async (email, name) => {
   const info = await transporter.sendMail({
     from: `"${sender.name}" <${sender.email}>`,
     to: email,
-    subject: "Welcome to Auth Company!",
+    subject: "Welcome to Ceylon Calling!",
     html: `<p>Welcome, ${name}!</p><p>Your account is now verified.</p>`,
   });
   console.log("Preview URL:", nodemailer.getTestMessageUrl(info));

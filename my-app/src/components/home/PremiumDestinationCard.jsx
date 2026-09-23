@@ -3,7 +3,7 @@ import { ArrowRight, BadgeCheck, Camera, Heart, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const getShopImageSet = (shop) => {
-  const primary = shop.photo ? `http://localhost:5000${shop.photo}` : null;
+  const primary = shop.photo ? `${shop.photo}` : null;
   const type = (shop.shopType || "restaurant").toLowerCase();
   const typeImages = {
     restaurant: [

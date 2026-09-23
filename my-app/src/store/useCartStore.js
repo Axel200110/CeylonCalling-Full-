@@ -83,7 +83,7 @@ export const useCartStore = create(
 
         set({
           items: newItems,
-          currentShop: currentShop || { id: shopId, name: shopName },
+          currentShop: currentShop || { id: shopId, _id: shopId, name: shopName },
           isCartOpen: true,
         });
 
@@ -114,7 +114,7 @@ export const useCartStore = create(
 
         set({
           items: newItems,
-          currentShop: { id: shop.id, name: shop.name },
+          currentShop: { id: shop.id, _id: shop.id, name: shop.name },
           conflictModal: { isOpen: false, pendingItem: null, pendingShop: null },
           isCartOpen: true,
         });

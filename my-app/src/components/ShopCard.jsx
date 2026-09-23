@@ -56,7 +56,7 @@ export default function ShopCard({ shop, currentUserId }) {
   const mainImage = shop.photo
     ? shop.photo.startsWith("http")
       ? shop.photo
-      : `http://localhost:5000${shop.photo}`
+      : `${shop.photo}`
     : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80"; // Fallback beautiful image
 
   const [imageSrc, setImageSrc] = useState(mainImage);
@@ -80,7 +80,7 @@ export default function ShopCard({ shop, currentUserId }) {
     setLikeLoading(true);
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/shops/${shop._id}/like`,
+        `/api/shops/${shop._id}/like`,
         {},
         { withCredentials: true }
       );

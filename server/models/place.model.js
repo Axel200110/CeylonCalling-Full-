@@ -37,7 +37,15 @@ const placeSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  createdAt: { 
+  // Aggregate visitor rating, recalculated by the place-comment routes
+  // whenever a review is added/removed.
+  rating: {
+    type: Number,
+    default: 4.5,
+    min: 0,
+    max: 5
+  },
+  createdAt: {
     type: Date, 
     default: Date.now 
   },

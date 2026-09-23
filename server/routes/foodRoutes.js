@@ -2,10 +2,12 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import FoodItem from "../models/Addfood.js";
-import Shop from "../models/Shop.js";
-import Category from "../models/Category.js";
+import FoodItem from "../models/food.model.js";
+import Shop from "../models/shop.model.js";
+import Category from "../models/category.model.js";
 import { sessionAuth } from "../middlewares/sessionAuth.js";
+
+import mongoose from "mongoose";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +25,7 @@ const upload = multer({ storage });
 // GET: All food items for a specific shop (PUBLIC)
 router.get("/shop/:shopId", async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.shopId)) return res.status(404).json([]);
     const shop = await Shop.findOne({ _id: req.params.shopId, status: "approved" });
     if (!shop) return res.status(404).json([]);
     const foods = await FoodItem.find({ shop: req.params.shopId }).populate("category");
@@ -40,7 +43,7 @@ router.get("/all", async (req, res) => {
       .populate({
         path: "shop",
         match: { status: "approved" },
-        select: "name location photo priceRange shopType status"
+        select: "name location photo priceRange shopType status operationalStatus"
       });
     const approvedFoods = foods.filter(food => food.shop !== null);
     res.json(approvedFoods);
@@ -61,34 +64,14 @@ router.get("/categories/all", async (req, res) => {
   }
 });
 
-// GET: Get a single food item by ID (PUBLIC)
-router.get("/:id", async (req, res) => {
-  try {
-    const food = await FoodItem.findById(req.params.id)
-      .populate("category")
-      .populate({
-        path: "shop",
-        match: { status: "approved" },
-        select: "name location photo priceRange shopType contact activeTime description services"
-      });
-    if (!food || !food.shop) {
-      return res.status(404).json({ error: "Food item not found or associated shop is not approved." });
-    }
-    res.json(food);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// --- PRIVATE ROUTES ---
+// --- PRIVATE ROUTES FOR SHOP OWNER (must be declared before parameterized /:id) ---
 
 // GET: All food items for current user's shop (PRIVATE)
 router.get("/my-shop", sessionAuth, async (req, res) => {
   try {
     const shop = await Shop.findOne({ owner: req.session.userId });
     if (!shop) return res.status(404).json([]);
-    const foods = await FoodItem.find({ shop: shop._id }).populate("category");
+    const foods = await FoodItem.find({ shop: shop._id }).populate("category").sort({ createdAt: -1 });
     res.json(foods);
   } catch (error) {
     res.status(500).json([]);
@@ -107,13 +90,35 @@ router.get("/my-shop/categories", sessionAuth, async (req, res) => {
   }
 });
 
+// GET: Get a single food item by ID (PUBLIC)
+router.get("/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ error: "Invalid food ID" });
+    }
+    const food = await FoodItem.findById(req.params.id)
+      .populate("category")
+      .populate({
+        path: "shop",
+        match: { status: "approved" },
+        select: "name location photo priceRange shopType contact activeTime description services operationalStatus"
+      });
+    if (!food || !food.shop) {
+      return res.status(404).json({ error: "Food item not found or associated shop is not approved." });
+    }
+    res.json(food);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST: Add new food item for current user's shop (PRIVATE)
 router.post("/", sessionAuth, upload.single("picture"), async (req, res) => {
   try {
     const shop = await Shop.findOne({ owner: req.session.userId });
     if (!shop) return res.status(403).json({ error: "No shop for user" });
 
-    const { name, categoryId, price } = req.body;
+    const { name, categoryId, price, description, availability, tag, discountPrice } = req.body;
     if (!name || !categoryId || !price)
       return res.status(400).json({ error: "Name, categoryId, and price are required." });
 
@@ -123,6 +128,10 @@ router.post("/", sessionAuth, upload.single("picture"), async (req, res) => {
       name: name.trim(),
       category: categoryId,
       price: Number(price),
+      description: description ? description.trim() : "",
+      availability: availability || "available",
+      tag: tag || "standard",
+      discountPrice: discountPrice ? Number(discountPrice) : 0,
       picture,
       shop: shop._id,
     });
@@ -143,13 +152,20 @@ router.put("/:id", sessionAuth, upload.single("picture"), async (req, res) => {
     if (!shop) return res.status(403).json({ error: "No shop for user" });
 
     const updateData = {};
-    if (req.body.name !== undefined) updateData.name = req.body.name;
-    if (req.body.price !== undefined) updateData.price = req.body.price;
+    if (req.body.name !== undefined) updateData.name = req.body.name.trim();
+    if (req.body.price !== undefined) updateData.price = Number(req.body.price);
     if (req.body.categoryId !== undefined) updateData.category = req.body.categoryId;
+    if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.availability !== undefined) updateData.availability = req.body.availability;
+    if (req.body.tag !== undefined) updateData.tag = req.body.tag;
+    if (req.body.discountPrice !== undefined) updateData.discountPrice = Number(req.body.discountPrice);
+    
     if (req.file) {
       updateData.picture = `/uploads/${req.file.filename}`;
     } else if (req.body.picture === "") {
-      updateData.picture = undefined;
+      // Explicit empty string, not undefined — Mongoose/MongoDB drop keys
+      // whose value is undefined, so this never actually cleared the field.
+      updateData.picture = "";
     }
 
     const updatedFood = await FoodItem.findOneAndUpdate(
@@ -165,6 +181,32 @@ router.put("/:id", sessionAuth, upload.single("picture"), async (req, res) => {
   } catch (error) {
     console.error("Error updating food item:", error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// PATCH: Quick status change (available/sold_out/temporarily_unavailable)
+router.patch("/:id/availability", sessionAuth, async (req, res) => {
+  try {
+    const shop = await Shop.findOne({ owner: req.session.userId });
+    if (!shop) return res.status(403).json({ error: "No shop for user" });
+
+    const { availability } = req.body;
+    if (!["available", "sold_out", "temporarily_unavailable"].includes(availability)) {
+      return res.status(400).json({ error: "Invalid availability status" });
+    }
+
+    const updatedFood = await FoodItem.findOneAndUpdate(
+      { _id: req.params.id, shop: shop._id },
+      { availability },
+      { new: true }
+    ).populate("category");
+
+    if (!updatedFood) {
+      return res.status(404).json({ error: "Food item not found or not belonging to your shop." });
+    }
+    res.status(200).json(updatedFood);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

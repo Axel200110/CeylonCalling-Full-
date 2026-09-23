@@ -19,14 +19,13 @@ export const signup = async (req, res) => {
     if (existingUser) return res.status(400).json({ success: false, message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Email verification is disabled — account is active immediately on signup.
     const user = await SiteUser.create({
       email,
       password: hashedPassword,
       name,
-      verificationToken,
-      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      isVerified: true,
     });
 
     // Set session with siteuserId key
@@ -34,7 +33,10 @@ export const signup = async (req, res) => {
     req.session.isVerified = user.isVerified;
     await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
 
-    await sendVerificationEmail(user.email, verificationToken);
+    // Best-effort welcome email — never fail signup if the mail provider hiccups.
+    sendWelcomeEmail(user.email, user.name).catch((err) =>
+      console.error("sendWelcomeEmail failed (non-fatal):", err.message)
+    );
 
     res.status(201).json({
       success: true,

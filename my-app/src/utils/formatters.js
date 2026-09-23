@@ -47,23 +47,47 @@ export const FALLBACK_IMAGES = {
  * @param {string} type - restaurant, cafe, hotel, villa, guesthouse, food, destination
  * @returns {string}
  */
-export const resolveImageUrl = (url, type = "restaurant") => {
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+  }
+  return import.meta.env.MODE === "development" ? "" : "";
+};
+
+export const resolveImageUrl = (url, type = "restaurant", options = {}) => {
+  const { width = 600, quality = 80 } = options;
   if (!url || typeof url !== "string" || url.trim() === "" || url === "undefined" || url === "null") {
-    return FALLBACK_IMAGES[type] || FALLBACK_IMAGES.restaurant;
+    const fallback = FALLBACK_IMAGES[type] || FALLBACK_IMAGES.restaurant;
+    return fallback.includes("w=") ? fallback : `${fallback}&w=${width}&q=${quality}`;
   }
   
   const cleanUrl = url.trim();
+  
+  // 1. Cloudinary dynamic optimization: auto-WebP/AVIF format, auto-quality, responsive width
+  if (cleanUrl.includes("cloudinary.com") && cleanUrl.includes("/upload/")) {
+    if (!cleanUrl.includes("/upload/f_") && !cleanUrl.includes("/upload/w_")) {
+      return cleanUrl.replace("/upload/", `/upload/f_auto,q_auto,w_${width}/`);
+    }
+    return cleanUrl;
+  }
+
+  // 2. Unsplash dynamic optimization
+  if (cleanUrl.includes("images.unsplash.com")) {
+    if (!cleanUrl.includes("w=")) {
+      return `${cleanUrl}&auto=format&fit=crop&w=${width}&q=${quality}`;
+    }
+    return cleanUrl;
+  }
+
   if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
     return cleanUrl;
   }
   
-  if (cleanUrl.startsWith("/uploads/") || cleanUrl.startsWith("uploads/")) {
-    const formatted = cleanUrl.startsWith("/") ? cleanUrl : `/${cleanUrl}`;
-    return `http://localhost:5000${formatted}`;
-  }
-
-  return cleanUrl.startsWith("/") ? `http://localhost:5000${cleanUrl}` : `http://localhost:5000/${cleanUrl}`;
+  const apiBase = getApiBaseUrl();
+  const formattedPath = cleanUrl.startsWith("/") ? cleanUrl : `/${cleanUrl}`;
+  return `${apiBase}${formattedPath}`;
 };
+
 
 /**
  * Parse price range tier from string

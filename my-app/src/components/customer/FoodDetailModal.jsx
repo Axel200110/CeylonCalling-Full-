@@ -36,11 +36,6 @@ export default function FoodDetailModal({
   const shopName = shop?.name || food.shop?.name || "Restaurant";
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
-
     addItem(food, shop || food.shop, quantity);
     setAddedAnimation(true);
     setTimeout(() => {

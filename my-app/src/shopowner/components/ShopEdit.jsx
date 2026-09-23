@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { FaCamera, FaTimes } from 'react-icons/fa';
+import { FaCamera, FaTimes, FaMapMarkerAlt, FaCompass } from 'react-icons/fa';
+import { useAuthStore } from '../store/authStore';
 
 const backdropVariants = {
   hidden: { opacity: 0 },
@@ -23,22 +24,74 @@ const modalVariants = {
 };
 
 export default function ShopEditModal({ shop, onClose }) {
+  const setShop = useAuthStore((state) => state.setShop);
+
+  const initialDistrict =
+    shop?.location?.district ||
+    shop?.addressDetails?.district ||
+    (typeof shop?.location === "string" && shop?.location.toLowerCase().includes("polonnaruwa")
+      ? "Polonnaruwa"
+      : "Anuradhapura");
+
+  const initialCity =
+    shop?.location?.city ||
+    shop?.addressDetails?.city ||
+    (typeof shop?.location === "string"
+      ? shop?.location
+      : initialDistrict === "Polonnaruwa"
+      ? "Polonnaruwa Heritage City"
+      : "Anuradhapura Town");
+
+  const initialAddress =
+    shop?.location?.address || shop?.addressDetails?.streetAddress || "";
+
+  const rawCoords = shop?.location?.coordinates?.coordinates;
+  const initialLng =
+    Array.isArray(rawCoords) && rawCoords.length >= 2
+      ? rawCoords[0]
+      : shop?.addressDetails?.coordinates?.lng || (initialDistrict === "Polonnaruwa" ? 81.0188 : 80.4037);
+
+  const initialLat =
+    Array.isArray(rawCoords) && rawCoords.length >= 2
+      ? rawCoords[1]
+      : shop?.addressDetails?.coordinates?.lat || (initialDistrict === "Polonnaruwa" ? 7.9403 : 8.3114);
+
   const [form, setForm] = useState({
     name: shop?.name || "",
     activeTime: shop?.activeTime || "",
-    description: shop?.description || "",
-    location: shop?.location || "",
+    description: shop?.description || shop?.businessDescription || "",
+    district: initialDistrict,
+    city: initialCity,
+    address: initialAddress,
+    latitude: initialLat,
+    longitude: initialLng,
     priceRange: shop?.priceRange || "",
     shopType: shop?.shopType || "restaurant",
     contact: shop?.contact || "",
   });
+
   const [preview, setPreview] = useState(shop?.photo || null);
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "district") {
+        if (value === "Polonnaruwa") {
+          updated.latitude = 7.9403;
+          updated.longitude = 81.0188;
+        } else if (value === "Anuradhapura") {
+          updated.latitude = 8.3114;
+          updated.longitude = 80.4037;
+        }
+      }
+      return updated;
+    });
+  };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -55,19 +108,29 @@ export default function ShopEditModal({ shop, onClose }) {
     setErrorMsg("");
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([key, val]) => formData.append(key, val));
+      Object.entries(form).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val);
+        }
+      });
       if (photo) formData.append("photo", photo);
-      await axios.put(`/api/shops/${shop._id}`, formData, {
+
+      const res = await axios.put(`/api/shops/${shop._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
       });
-      setSuccessMsg("✅ Shop updated!");
+
+      if (res.data?.shop) {
+        setShop(res.data.shop);
+      }
+
+      setSuccessMsg("✅ Business profile updated successfully!");
       setTimeout(() => {
         setSuccessMsg("");
         onClose();
       }, 1200);
     } catch (err) {
-      setErrorMsg(err.response?.data?.error || "Update failed.");
+      setErrorMsg(err.response?.data?.error || err.response?.data?.message || "Update failed.");
     } finally {
       setLoading(false);
     }
@@ -76,15 +139,15 @@ export default function ShopEditModal({ shop, onClose }) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
         variants={backdropVariants}
         initial="hidden"
         animate="visible"
         exit="hidden"
       >
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
         <motion.div
-          className="relative w-full max-w-lg mx-auto bg-white/80 backdrop-blur-lg rounded-3xl p-4 sm:p-8 shadow-xl z-50"
+          className="relative w-full max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl z-50 text-slate-100 max-h-[90vh] overflow-y-auto"
           variants={modalVariants}
           initial="hidden"
           animate="visible"
@@ -94,98 +157,218 @@ export default function ShopEditModal({ shop, onClose }) {
           {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 rounded-full hover:bg-gray-100 transition"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition"
             aria-label="Close"
           >
-            <FaTimes className="text-gray-600 w-5 h-5" />
+            <FaTimes className="w-4 h-4" />
           </button>
 
-          <h2 className="text-center text-lg sm:text-2xl font-bold text-purple-700 mb-4 sm:mb-6 lowercase sm:normal-case">
-            edit shop profile
-          </h2>
+          <div className="text-center mb-5">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Edit Business Profile &amp; Location
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Update branding, North Central Province location, and navigation coordinates.
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Image Upload */}
             <div className="flex justify-center">
-              <label className="relative group w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-teal-400 shadow-inner cursor-pointer">
+              <label className="relative group w-20 h-20 rounded-2xl overflow-hidden ring-2 ring-emerald-500/50 shadow-inner cursor-pointer bg-slate-800">
                 {preview ? (
                   <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                    <FaCamera className="text-xl sm:text-2xl" />
+                  <div className="flex items-center justify-center h-full text-slate-500">
+                    <FaCamera className="text-xl" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                  <FaCamera className="text-white text-lg sm:text-xl" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                  <FaCamera className="text-white text-lg" />
                 </div>
                 <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
               </label>
             </div>
 
-            {/* Grid Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              {[
-                { label: "Shop Name", name: "name", required: true },
-                { label: "Location", name: "location", required: true },
-                { label: "Price Range", name: "priceRange" },
-                { label: "Active Hours", name: "activeTime" },
-                { label: "Contact", name: "contact", required: true },
-              ].map(({ label, name, required }) => (
-                <div key={name}>
-                  <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block lowercase sm:normal-case">
-                    {label}{required && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    name={name}
-                    value={form[name]}
-                    onChange={handleChange}
-                    required={required}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-              ))}
-
-              {/* Shop Type */}
+            {/* General Information Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block lowercase sm:normal-case">shop type</label>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                  Business Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                  Contact Phone <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  name="contact"
+                  value={form.contact}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                  Establishment Type
+                </label>
                 <select
                   name="shopType"
                   value={form.shopType}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm bg-white shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="restaurant">Restaurant</option>
+                  <option value="hotel">Hotel &amp; Resort</option>
+                  <option value="villa">Private Villa</option>
+                  <option value="guesthouse">Guest House</option>
                   <option value="small_food_shop">Small Food Shop</option>
-                  <option value="hotel">Hotel</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                  Active Hours
+                </label>
+                <input
+                  name="activeTime"
+                  placeholder="e.g. 8:00 AM - 10:00 PM"
+                  value={form.activeTime}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            {/* Structured North Central Location */}
+            <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <FaMapMarkerAlt />
+                <span>North Central Province Location</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-300 mb-1 block">
+                    District <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    name="district"
+                    value={form.district}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="Anuradhapura">Anuradhapura</option>
+                    <option value="Polonnaruwa">Polonnaruwa</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-300 mb-1 block">
+                    City / Town <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    name="city"
+                    value={form.city}
+                    onChange={handleChange}
+                    placeholder="e.g. Anuradhapura Town, Mihintale, Polonnaruwa"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 mb-1 block">
+                  Street Address or Landmark
+                </label>
+                <input
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
+                  placeholder="e.g. 42 Main Street, Near Sacred Bo Tree"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-300 mb-1 block flex items-center gap-1">
+                    <FaCompass className="text-emerald-400 text-[10px]" />
+                    <span>Latitude</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="latitude"
+                    value={form.latitude}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-300 mb-1 block flex items-center gap-1">
+                    <FaCompass className="text-emerald-400 text-[10px]" />
+                    <span>Longitude</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="longitude"
+                    value={form.longitude}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Description */}
             <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block lowercase sm:normal-case">description</label>
+              <label className="text-xs font-semibold text-slate-300 mb-1 block">
+                Business Description
+              </label>
               <textarea
                 name="description"
-                rows="3"
+                rows="2"
                 value={form.description}
                 onChange={handleChange}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm bg-white shadow-inner resize-none focus:outline-none focus:ring-2 focus:ring-teal-400"
-                placeholder="tell something about your shop..."
+                className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                placeholder="Share highlights about your venue, specialties, or history..."
               />
             </div>
 
             {/* Messages */}
-            {successMsg && <p className="text-green-600 text-center text-xs sm:text-base">{successMsg}</p>}
-            {errorMsg && <p className="text-red-500 text-center text-xs sm:text-base">{errorMsg}</p>}
+            {successMsg && <p className="text-emerald-400 text-center text-xs font-semibold">{successMsg}</p>}
+            {errorMsg && <p className="text-rose-400 text-center text-xs font-semibold">{errorMsg}</p>}
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 sm:py-3 rounded-full bg-gradient-to-r from-purple-500 to-teal-400 text-white font-semibold hover:opacity-90 transition disabled:opacity-50 text-xs sm:text-base lowercase sm:normal-case"
-            >
-              {loading ? "saving..." : "update shop"}
-            </button>
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold text-xs transition disabled:opacity-50 shadow-lg shadow-emerald-600/20"
+              >
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </form>
         </motion.div>
       </motion.div>

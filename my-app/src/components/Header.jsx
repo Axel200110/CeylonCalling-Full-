@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "./Navigation";
 
 // --- Carousel Images ---
-import heroImg1 from "../assets/Hero.jpg";
+import heroImg1 from "../assets/hero_opt.jpg";
 
 // Icons
 import {
@@ -75,8 +75,8 @@ export default function Header() {
 
   const carouselImages = [
     heroImg1,
-    "https://images.unsplash.com/photo-1546768292-fb12f6c9256b?q=80&w=2070", 
-    "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070"
+    "https://images.unsplash.com/photo-1546768292-fb12f6c9256b?auto=format&fit=crop&w=1280&q=75",
+    "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1280&q=75"
   ];
 
   useEffect(() => {

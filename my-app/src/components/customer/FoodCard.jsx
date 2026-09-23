@@ -22,19 +22,11 @@ export default function FoodCard({
 
   const handleAdd = (e) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
     addItem(food, shop, 1);
   };
 
   const handleIncrement = (e) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
     updateQuantity(food._id, 1);
   };
 
@@ -100,7 +92,7 @@ export default function FoodCard({
             </div>
 
             {/* Cart Quantity Control or Add Button */}
-            {quantityInCart > 0 && isAuthenticated ? (
+            {quantityInCart > 0 ? (
               <div
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-1 shadow-xs"

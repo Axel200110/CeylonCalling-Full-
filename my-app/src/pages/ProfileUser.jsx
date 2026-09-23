@@ -1,494 +1,865 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
-import { useNavigate } from "react-router-dom";
-import {
-  FaUserCircle,
-  FaStore,
-  FaCog,
-  FaPlaneDeparture,
-  FaHome,
-  FaPlus,
-  FaMapMarkerAlt,
-  FaTags,
-  FaEdit,
-  FaTrash,
-  FaChartLine,
-} from "react-icons/fa";
-import { IoMdClose } from "react-icons/io";
-import TopNavigation from "../components/TopNavigation";
-import SearchBar from "../components/SearchBar";
-import AddPlace from "../components/AddPlace";
-import AddCategory from "../components/AddLocationCategory";
-import PlaceEdit from "../components/PlaceEdit";
-import PlaceInsightsCard from "../components/PlaceInsightCard";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
+import { notify } from "../utils/toast";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  ShoppingBag,
+  Hotel,
+  Star,
+  Settings,
+  ShieldCheck,
+  ChevronRight,
+  Clock,
+  MapPin,
+  Utensils,
+  Trash2,
+  ExternalLink,
+  RefreshCw,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+  Bed,
+} from "lucide-react";
+import CustomerHeader from "../components/customer/CustomerHeader";
+import CartDrawer from "../components/customer/CartDrawer";
+import EmptyState from "../components/customer/EmptyState";
+import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
+import { formatLKR, resolveImageUrl } from "../utils/formatters";
 
-const categoryColors = [
-  "bg-gradient-to-r from-indigo-500 to-purple-600",
-  "bg-gradient-to-r from-pink-500 to-rose-500",
-  "bg-gradient-to-r from-amber-500 to-orange-500",
-  "bg-gradient-to-r from-emerald-500 to-teal-600",
-  "bg-gradient-to-r from-blue-500 to-cyan-500",
-  "bg-gradient-to-r from-violet-500 to-fuchsia-500",
-  "bg-gradient-to-r from-sky-500 to-blue-500",
-];
-
-const getDisplayImage = (photo) => {
-  if (!photo) return "https://via.placeholder.com/600x300?text=No+Image";
-  if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
-  if (photo.startsWith("/uploads")) return `http://localhost:5000${photo}`;
-  if (photo.startsWith("uploads")) return `http://localhost:5000/${photo}`;
-  return photo;
-};
-
-export default function ProfileUserPage() {
-  const user = useSiteUserAuthStore((state) => state.user);
+export default function ProfileUser() {
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useSiteUserAuthStore();
 
-  const [places, setPlaces] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [editingPlace, setEditingPlace] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
-  const [openInsightsId, setOpenInsightsId] = useState(null);
+  const [activeTab, setActiveTab] = useState("orders"); // 'orders', 'bookings', 'reviews', 'account'
+  
+  // Data states
+  const [orders, setOrders] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [placesRes, categoriesRes] = await Promise.all([
-          axios.get("/api/place", { withCredentials: true }),
-          axios.get("/api/placecat", { withCredentials: true }),
-        ]);
-        setPlaces(placesRes.data?.data || placesRes.data || []);
-        setCategories(categoriesRes.data?.data || categoriesRes.data || []);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    if (!isAuthenticated) {
+      navigate("/user/login", { state: { returnTo: "/profile" } });
+    }
+  }, [isAuthenticated, navigate]);
 
-  const handleDeletePlace = async (placeId) => {
-    if (window.confirm("Are you sure you want to delete this place?")) {
-      try {
-        await axios.delete(`/api/place/${placeId}`, { withCredentials: true });
-        setPlaces(prev => prev.filter(place => place._id !== placeId));
-      } catch (error) {
-        console.error("Failed to delete place:", error);
-      }
+  // Fetch Orders
+  const fetchOrders = async (silent = false) => {
+    if (!silent) setLoadingOrders(true);
+    try {
+      const res = await axios.get("/api/orders/my-orders", {
+        withCredentials: true,
+      });
+      setOrders(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+      if (!silent) setOrders([]);
+    } finally {
+      if (!silent) setLoadingOrders(false);
     }
   };
 
-  const handleDeleteCategory = async (categoryId) => {
-    if (window.confirm("Are you sure you want to delete this category?")) {
-      try {
-        await axios.delete(`/api/placecat/${categoryId}`, { withCredentials: true });
-        setCategories(prev => prev.filter(cat => cat._id !== categoryId));
-      } catch (error) {
-        console.error("Failed to delete category:", error);
-      }
+  // Polling for active orders every 15s (pending, confirmed, preparing, ready)
+  useEffect(() => {
+    const hasActiveOrders = orders.some((o) =>
+      ["pending", "confirmed", "preparing", "ready"].includes(o.status?.toLowerCase())
+    );
+    if (!hasActiveOrders || !isAuthenticated) return;
+
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [orders, isAuthenticated]);
+
+  // Fetch Bookings
+  const fetchBookings = async () => {
+    setLoadingBookings(true);
+    try {
+      const res = await axios.get("/api/bookings/my-bookings", {
+        withCredentials: true,
+      });
+      setBookings(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to load bookings:", err);
+      setBookings([]);
+    } finally {
+      setLoadingBookings(false);
     }
   };
 
-  const filteredPlaces = places.filter((place) => {
-    const matchSearch =
-      place.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      place.location?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch Reviews
+  const fetchReviews = async () => {
+    setLoadingReviews(true);
+    try {
+      const res = await axios.get("/api/comments/my-comments", {
+        withCredentials: true,
+      });
+      setReviews(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to load reviews:", err);
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
-    const matchCategory =
-      !selectedCategory ||
-      place.categories?.includes(selectedCategory) ||
-      place.categories?.some(
-        (cat) => cat._id === selectedCategory || cat.name === selectedCategory
-      );
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrders();
+      fetchBookings();
+      fetchReviews();
+    }
+  }, [isAuthenticated]);
 
-    return matchSearch && matchCategory;
-  });
+  // Delete own review
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    setDeletingReviewId(reviewId);
+    try {
+      await axios.delete(`/api/comments/user/${reviewId}`, {
+        withCredentials: true,
+      });
+      toast.success("Review deleted successfully");
+      fetchReviews();
+    } catch (err) {
+      console.error("Failed to delete review:", err);
+      toast.error(err.response?.data?.error || "Failed to delete review");
+    } finally {
+      setDeletingReviewId(null);
+    }
+  };
+
+  if (!isAuthenticated || !user) return null;
+
+  // Status helper styles
+  const getOrderStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "confirmed":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "preparing":
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      case "ready":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "completed":
+        return "bg-slate-100 text-slate-700 border-slate-200";
+      case "cancelled":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
+
+  const getBookingStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "confirmed":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "checked_in":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "checked_out":
+      case "completed":
+        return "bg-slate-100 text-slate-700 border-slate-200";
+      case "cancelled":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+      default:
+        return "bg-slate-50 text-slate-700 border-slate-200";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
-      {/* Top Navigation */}
-      <TopNavigation
-        setShowAddPlaceModal={setShowAddPlaceModal}
-        setShowAddCategoryModal={setShowAddCategoryModal}
-        showAddMenu={showAddMenu}
-        setShowAddMenu={setShowAddMenu}
-      />
+    <div className="min-h-screen bg-slate-50/40 flex flex-col">
+      <CustomerHeader />
+      <CartDrawer />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Places Collection</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Manage all your favorite places and categories in one place
-          </p>
-        </div>
-
-        {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-md shadow-black p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="w-full md:w-1/3">
-              <SearchBar
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Search places by name or location..."
-                className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="flex-1">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    !selectedCategory
-                      ? "bg-purple-600 text-white shadow-md"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  All Places
-                </button>
-                {categories.map((category, index) => (
-                  <div key={category._id} className="relative group">
-                    <button
-                      onClick={() =>
-                        setSelectedCategory(
-                          selectedCategory === category._id ? null : category._id
-                        )
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium text-white shadow-sm transition-all ${
-                        categoryColors[index % categoryColors.length]
-                      } ${
-                        selectedCategory === category._id
-                          ? "ring-2 ring-white ring-offset-2 transform scale-105"
-                          : "hover:scale-105"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCategory(category._id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all shadow-sm hover:scale-110"
-                      title="Delete category"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20 space-y-8">
+        {/* User Hero Identity Card */}
+        <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <div className="relative">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center text-2xl sm:text-3xl font-black uppercase shadow-md shadow-emerald-500/10">
+                {user.name ? user.name.charAt(0) : "U"}
               </div>
+              <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-xs">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white" title="Verified Customer">
+                  <ShieldCheck size={12} />
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  {user.name || "Customer Explorer"}
+                </h1>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                  Verified Explorer
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <Mail size={12} className="text-slate-400" />
+                  {user.email}
+                </span>
+                {user.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone size={12} className="text-slate-400" />
+                    {user.phone}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                  <MapPin size={12} />
+                  North Central Province
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+            <div className="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span className="block text-lg font-black text-slate-900">{orders.length}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Orders</span>
+            </div>
+            <div className="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span className="block text-lg font-black text-slate-900">{bookings.length}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Stays</span>
+            </div>
+            <div className="flex-1 md:flex-initial px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <span className="block text-lg font-black text-slate-900">{reviews.length}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reviews</span>
             </div>
           </div>
         </div>
 
-        {/* Content Section */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-          </div>
-        ) : filteredPlaces.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-            <div className="max-w-md mx-auto">
-              <div className="w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaMapMarkerAlt className="text-purple-500 text-3xl" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                {searchTerm || selectedCategory
-                  ? "No matching places found"
-                  : "Your places collection is empty"}
-              </h3>
-              <p className="text-gray-500 mb-6">
-                {searchTerm || selectedCategory
-                  ? "Try adjusting your search or filter criteria"
-                  : "Start by adding your first place"}
-              </p>
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200">
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === "orders"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <ShoppingBag size={14} />
+            <span>Food Orders</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "orders" ? "bg-slate-800 text-slate-200" : "bg-slate-200 text-slate-700"}`}>
+              {orders.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("bookings")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === "bookings"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Hotel size={14} />
+            <span>Stay Bookings</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "bookings" ? "bg-slate-800 text-slate-200" : "bg-slate-200 text-slate-700"}`}>
+              {bookings.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("reviews")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === "reviews"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Star size={14} />
+            <span>My Reviews</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "reviews" ? "bg-slate-800 text-slate-200" : "bg-slate-200 text-slate-700"}`}>
+              {reviews.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("account")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === "account"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Settings size={14} />
+            <span>Account Details</span>
+          </button>
+        </div>
+
+        {/* Tab 1: Food Orders */}
+        {activeTab === "orders" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-slate-900">
+                Recent Restaurant Orders
+              </h2>
               <button
-                onClick={() => setShowAddPlaceModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                onClick={fetchOrders}
+                disabled={loadingOrders}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition"
               >
-                <FaPlus className="inline mr-2" />
-                Add New Place
+                <RefreshCw size={12} className={loadingOrders ? "animate-spin" : ""} />
+                <span>Refresh</span>
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <AnimatePresence>
-              {filteredPlaces.map((place) => (
-                <motion.div
-                  key={place._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-gray-300 shadow-md shadow-black rounded-xl overflow-hidden  hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+
+            {loadingOrders ? (
+              <div className="bg-white rounded-3xl p-12 text-center text-xs text-slate-400 animate-pulse border border-slate-100">
+                Loading your food orders...
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center space-y-4 max-w-md mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <ShoppingBag size={28} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900">No Food Orders Yet</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Explore delicious authentic dining in Anuradhapura & Polonnaruwa and place your first order.
+                  </p>
+                </div>
+                <Link
+                  to="/shops?type=restaurant"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-900/10 transition"
                 >
-                  <div className="relative h-48 overflow-hidden group">
-                    <img
-                      src={getDisplayImage(place.images?.[0])}
-                      alt={place.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <button
-                        onClick={() => setEditingPlace(place)}
-                        className="bg-white/90 text-gray-800 p-2 rounded-full hover:bg-white transition-all hover:scale-110 shadow-sm"
-                        title="Edit"
-                      >
-                        <FaEdit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePlace(place._id)}
-                        className="bg-white/90 text-red-500 p-2 rounded-full hover:bg-white transition-all hover:scale-110 shadow-sm"
-                        title="Delete"
-                      >
-                        <FaTrash size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-bold text-gray-800 line-clamp-1">{place.title}</h3>
-                      <button
-                        onClick={() => setOpenInsightsId(place._id)}
-                        className="text-purple-600 hover:text-purple-800 p-1 hover:scale-110 transition-all"
-                        title="View Insights"
-                      >
-                        <FaChartLine size={16} />
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4 flex items-center">
-                      <FaMapMarkerAlt className="mr-2 text-purple-500 flex-shrink-0" />
-                      <span className="line-clamp-1">{place.location}</span>
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {place.categories?.slice(0, 3).map((catId, idx) => {
-                        const category = categories.find((c) => c._id === catId);
-                        return category ? (
-                          <span
-                            key={catId}
-                            className={`text-xs px-3 py-1 rounded-full text-white ${categoryColors[idx % categoryColors.length]}`}
-                          >
-                            {category.name}
+                  <Utensils size={14} />
+                  <span>Discover Restaurants</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => {
+                  const shopName = order.shop?.name || "Restaurant Partner";
+                  const shopId = order.shop?._id;
+                  const dateStr = order.createdAt
+                    ? new Date(order.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Recently";
+
+                  return (
+                    <div
+                      key={order._id}
+                      className="bg-white rounded-3xl border border-slate-100 p-5 sm:p-6 shadow-xs space-y-4 hover:border-slate-200 transition"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-900">
+                              {order.orderReference || `ORD-${order._id.slice(-6).toUpperCase()}`}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${getOrderStatusBadge(
+                                order.status
+                              )}`}
+                            >
+                              {order.status || "Pending"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">{dateStr}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 sm:text-right">
+                          {shopId ? (
+                            <Link
+                              to={`/restaurant/${shopId}`}
+                              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:underline"
+                            >
+                              <span>{shopName}</span>
+                              <ExternalLink size={12} />
+                            </Link>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-800">{shopName}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Ready Notification Banner */}
+                      {order.status?.toLowerCase() === "ready" && (
+                        <div className="p-3.5 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-between shadow-md shadow-emerald-900/10">
+                          <div className="flex items-center gap-2.5">
+                            <Sparkles size={16} className="text-amber-300 animate-spin shrink-0" />
+                            <span>Your order is ready! Please collect your items or await table service.</span>
+                          </div>
+                          <span className="hidden sm:inline-block text-[10px] px-2.5 py-0.5 rounded-full bg-white/20 uppercase tracking-wider font-black">
+                            Ready for Pickup
                           </span>
-                        ) : null;
-                      })}
-                      {place.categories?.length > 3 && (
-                        <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-700">
-                          +{place.categories.length - 3}
+                        </div>
+                      )}
+
+                      {/* Status Stepper / Progress Tracking */}
+                      {order.status?.toLowerCase() === "cancelled" ? (
+                        <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                          <AlertCircle size={15} className="shrink-0" />
+                          <span>This order was cancelled.</span>
+                        </div>
+                      ) : (
+                        <div className="py-2 px-1">
+                          {(() => {
+                            const steps = [
+                              { key: "pending", label: "Placed" },
+                              { key: "confirmed", label: "Confirmed" },
+                              { key: "preparing", label: "Preparing" },
+                              { key: "ready", label: "Ready" },
+                              { key: "completed", label: "Completed" },
+                            ];
+                            const currentKey = (order.status || "pending").toLowerCase();
+                            const stepIdx = steps.findIndex((s) => s.key === currentKey);
+                            const activeIdx = stepIdx === -1 ? 0 : stepIdx;
+                            const progressPct = (activeIdx / (steps.length - 1)) * 100;
+
+                            return (
+                              <div className="relative flex items-center justify-between">
+                                <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-1 bg-slate-100 rounded-full z-0" />
+                                <div
+                                  className="absolute top-1/2 left-0 -translate-y-1/2 h-1 bg-emerald-500 rounded-full transition-all duration-500 z-0"
+                                  style={{ width: `${progressPct}%` }}
+                                />
+                                {steps.map((step, idx) => {
+                                  const isDone = idx < activeIdx;
+                                  const isCurrent = idx === activeIdx;
+                                  return (
+                                    <div key={step.key} className="flex flex-col items-center relative z-10">
+                                      <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
+                                          isDone
+                                            ? "bg-emerald-600 text-white shadow-xs"
+                                            : isCurrent
+                                            ? "bg-emerald-500 text-white ring-4 ring-emerald-100 shadow-sm"
+                                            : "bg-white text-slate-400 border-2 border-slate-200"
+                                        }`}
+                                      >
+                                        {isDone ? <CheckCircle2 size={13} /> : idx + 1}
+                                      </div>
+                                      <span
+                                        className={`mt-1.5 text-[10px] font-bold ${
+                                          isCurrent
+                                            ? "text-emerald-700"
+                                            : isDone
+                                            ? "text-slate-700"
+                                            : "text-slate-400"
+                                        }`}
+                                      >
+                                        {step.label}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Items breakdown */}
+                      <div className="space-y-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                          Ordered Items
                         </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {Array.isArray(order.items) &&
+                            order.items.map((it, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100"
+                              >
+                                <span className="font-semibold text-slate-800">
+                                  {it.quantity}x {it.name}
+                                </span>
+                                <span className="font-bold text-slate-600">
+                                  {formatLKR(it.price * it.quantity)}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Summary footer */}
+                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-4 text-slate-500">
+                          <span className="capitalize">
+                            Service: <strong className="text-slate-800">{order.serviceType?.replace("_", " ") || "Dine in"}</strong>
+                          </span>
+                          {order.deliveryAddress && (
+                            <span className="truncate max-w-[200px]" title={order.deliveryAddress}>
+                              Location/Table: <strong className="text-slate-800">{order.deliveryAddress}</strong>
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 font-bold text-slate-900">
+                          <span>Total Paid:</span>
+                          <span className="text-base font-black text-emerald-600">
+                            {formatLKR(order.totalAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Stay Bookings */}
+        {activeTab === "bookings" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-slate-900">
+                Accommodation Bookings & Stays
+              </h2>
+              <button
+                onClick={fetchBookings}
+                disabled={loadingBookings}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition"
+              >
+                <RefreshCw size={12} className={loadingBookings ? "animate-spin" : ""} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            {loadingBookings ? (
+              <div className="bg-white rounded-3xl p-12 text-center text-xs text-slate-400 animate-pulse border border-slate-100">
+                Loading your bookings...
+              </div>
+            ) : bookings.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center space-y-4 max-w-md mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <Hotel size={28} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900">No Stay Bookings Yet</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Explore heritage hotels, serene lakeside villas, and pilgrim guest houses in North Central Province.
+                  </p>
+                </div>
+                <Link
+                  to="/shops?type=stays"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-900/10 transition"
+                >
+                  <Bed size={14} />
+                  <span>Discover Stays & Hotels</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map((booking) => {
+                  const venueName = booking.shop?.name || "Boutique Hotel";
+                  const venueId = booking.shop?._id;
+                  const roomName = booking.room?.name || "Comfort Room";
+                  const checkInStr = booking.checkInDate
+                    ? new Date(booking.checkInDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "TBD";
+                  const checkOutStr = booking.checkOutDate
+                    ? new Date(booking.checkOutDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "TBD";
+
+                  return (
+                    <div
+                      key={booking._id}
+                      className="bg-white rounded-3xl border border-slate-100 p-5 sm:p-6 shadow-xs space-y-4 hover:border-slate-200 transition"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-900">
+                              {booking.bookingReference || `BKG-${booking._id.slice(-6).toUpperCase()}`}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${getBookingStatusBadge(
+                                booking.status
+                              )}`}
+                            >
+                              {booking.status || "Pending"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Booked at <strong className="text-slate-800">{venueName}</strong>
+                          </p>
+                        </div>
+
+                        {venueId && (
+                          <Link
+                            to={`/restaurant/${venueId}`}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:underline"
+                          >
+                            <span>View Venue</span>
+                            <ExternalLink size={12} />
+                          </Link>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                            Room Category
+                          </span>
+                          <span className="font-bold text-slate-800 block truncate">{roomName}</span>
+                          <span className="text-[11px] text-slate-500">
+                            {booking.guestsCount} Guest(s)
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                            Stay Dates
+                          </span>
+                          <span className="font-bold text-slate-800 block">
+                            {checkInStr} &rarr; {checkOutStr}
+                          </span>
+                          <span className="text-[11px] text-emerald-600 font-semibold">
+                            Confirmed Dates
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                            Total Reservation Rate
+                          </span>
+                          <span className="text-base font-black text-emerald-600 block">
+                            {formatLKR(booking.totalPrice)}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Pay at check-in / cash</span>
+                        </div>
+                      </div>
+
+                      {booking.specialRequests && (
+                        <div className="p-3 rounded-xl bg-slate-50 text-xs text-slate-600 border border-slate-100">
+                          <strong className="text-slate-800">Special Notes:</strong> {booking.specialRequests}
+                        </div>
                       )}
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
-      </div>
 
-      {/* Floating Add Button */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          onClick={() => setShowAddMenu(!showAddMenu)}
-          className="w-14 h-14 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl transition-all transform hover:scale-110"
-        >
-          <FaPlus size={20} />
-        </button>
-        <AnimatePresence>
-          {showAddMenu && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/30 z-20"
-                onClick={() => setShowAddMenu(false)}
-              />
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0, y: 20 }}
-                transition={{ type: "spring", bounce: 0.4 }}
-                className="absolute bottom-20 right-0 bg-white rounded-xl shadow-xl overflow-hidden z-30"
+        {/* Tab 3: My Reviews */}
+        {activeTab === "reviews" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-extrabold text-slate-900">
+                Your Shared Reviews & Ratings
+              </h2>
+              <button
+                onClick={fetchReviews}
+                disabled={loadingReviews}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition"
               >
-                <button
-                  onClick={() => {
-                    setShowAddPlaceModal(true);
-                    setShowAddMenu(false);
-                  }}
-                  className="flex items-center px-6 py-3 hover:bg-gray-50 w-full text-left"
-                >
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                    <FaMapMarkerAlt className="text-purple-600" size={12} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Add Place</div>
-                    <div className="text-xs text-gray-500">Add a new location</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddCategoryModal(true);
-                    setShowAddMenu(false);
-                  }}
-                  className="flex items-center px-6 py-3 hover:bg-gray-50 w-full text-left border-t border-gray-100"
-                >
-                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
-                    <FaTags className="text-indigo-600" size={12} />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">Add Category</div>
-                    <div className="text-xs text-gray-500">Create a new category</div>
-                  </div>
-                </button>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Modals */}
-      <AnimatePresence>
-        {showAddPlaceModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white rounded-2xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh] shadow-2xl"
-              initial={{ scale: 0.95, y: 20 }} 
-              animate={{ scale: 1, y: 0 }} 
-              exit={{ scale: 0.95, y: 20 }}
-            >
-              <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Add New Place</h3>
-                <button 
-                  onClick={() => setShowAddPlaceModal(false)}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                >
-                  <IoMdClose size={24} />
-                </button>
-              </div>
-              <AddPlace 
-                onClose={() => setShowAddPlaceModal(false)} 
-                onPlaceAdded={(newPlace) => {
-                  setPlaces((prev) => [...prev, newPlace]);
-                  setShowAddPlaceModal(false);
-                }} 
-              />
-            </motion.div>
-          </motion.div>
-        )}
-
-        {showAddCategoryModal && (
-          <motion.div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"
-              initial={{ scale: 0.95, y: 20 }} 
-              animate={{ scale: 1, y: 0 }} 
-              exit={{ scale: 0.95, y: 20 }}
-            >
-              <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Create New Category</h3>
-                <button 
-                  onClick={() => setShowAddCategoryModal(false)}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                >
-                  <IoMdClose size={24} />
-                </button>
-              </div>
-              <AddCategory 
-                onClose={() => setShowAddCategoryModal(false)} 
-                onCategoryAdded={(newCat) => {
-                  setCategories((prev) => [...prev, newCat]);
-                  setShowAddCategoryModal(false);
-                }} 
-              />
-            </motion.div>
-          </motion.div>
-        )}
-
-        {editingPlace && (
-          <motion.div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white rounded-2xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh] shadow-2xl"
-              initial={{ scale: 0.95, y: 20 }} 
-              animate={{ scale: 1, y: 0 }} 
-              exit={{ scale: 0.95, y: 20 }}
-            >
-              <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Edit Place</h3>
-                <button 
-                  onClick={() => setEditingPlace(null)}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                >
-                  <IoMdClose size={24} />
-                </button>
-              </div>
-              <PlaceEdit
-                place={editingPlace}
-                categories={categories}
-                onClose={() => setEditingPlace(null)}
-                onPlaceUpdated={(updatedPlace) => {
-                  setPlaces((prev) =>
-                    prev.map((p) => (p._id === updatedPlace._id ? updatedPlace : p))
-                  );
-                  setEditingPlace(null);
-                }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-
-        {openInsightsId && (
-          <motion.div 
-            className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="bg-white max-w-4xl w-full rounded-2xl p-8 shadow-2xl relative"
-              initial={{ scale: 0.95, y: 20 }} 
-              animate={{ scale: 1, y: 0 }} 
-              exit={{ scale: 0.95, y: 20 }}
-            >
-              <button 
-                onClick={() => setOpenInsightsId(null)} 
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-              >
-                <IoMdClose size={24} />
+                <RefreshCw size={12} className={loadingReviews ? "animate-spin" : ""} />
+                <span>Refresh</span>
               </button>
-              <PlaceInsightsCard
-                place={places.find(p => p._id === openInsightsId)}
-                categories={categories}
-              />
-            </motion.div>
-          </motion.div>
+            </div>
+
+            {loadingReviews ? (
+              <div className="bg-white rounded-3xl p-12 text-center text-xs text-slate-400 animate-pulse border border-slate-100">
+                Loading your reviews...
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center space-y-4 max-w-md mx-auto shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <Star size={28} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-slate-900">No Reviews Written Yet</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Visited a restaurant or stayed in a heritage hotel? Share your feedback to help fellow travellers!
+                  </p>
+                </div>
+                <Link
+                  to="/discover"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-900/10 transition"
+                >
+                  <Sparkles size={14} />
+                  <span>Explore & Review Venues</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((rev) => {
+                  const shopName = rev.shop?.name || "Partner Venue";
+                  const shopId = rev.shop?._id || rev.shop;
+                  const dateStr = rev.createdAt
+                    ? new Date(rev.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Recently";
+
+                  return (
+                    <div
+                      key={rev._id}
+                      className="bg-white rounded-3xl border border-slate-100 p-5 sm:p-6 shadow-xs space-y-3 hover:border-slate-200 transition"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          {shopId ? (
+                            <Link
+                              to={`/restaurant/${shopId}`}
+                              className="text-sm font-extrabold text-slate-900 hover:text-emerald-600 transition inline-flex items-center gap-1.5"
+                            >
+                              <span>{shopName}</span>
+                              <ExternalLink size={12} className="text-slate-400" />
+                            </Link>
+                          ) : (
+                            <h3 className="text-sm font-extrabold text-slate-900">{shopName}</h3>
+                          )}
+                          <span className="text-[11px] text-slate-400 block">{dateStr}</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center text-amber-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={13}
+                                className={i < (rev.rating || 5) ? "fill-amber-400" : "text-slate-200"}
+                              />
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(rev._id)}
+                            disabled={deletingReviewId === rev._id}
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                            title="Delete this review"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-600 leading-relaxed font-light whitespace-pre-wrap">
+                        {rev.message}
+                      </p>
+
+                      {rev.ownerReply?.message && (
+                        <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100/90 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-emerald-800 font-bold text-[11px]">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              Response from Venue Host
+                            </span>
+                            {rev.ownerReply.repliedAt && (
+                              <span className="text-[10px] text-emerald-600 font-normal">
+                                {new Date(rev.ownerReply.repliedAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-700 font-normal leading-relaxed">
+                            {rev.ownerReply.message}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* Tab 4: Account Details */}
+        {activeTab === "account" && (
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-6">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">
+                Account Information & Security
+              </h2>
+              <p className="text-xs text-slate-400 font-light mt-0.5">
+                Your authenticated profile credentials and security preferences.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Full Name</span>
+                <span className="font-bold text-slate-900 text-sm block">{user.name || "Explorer"}</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Email Address</span>
+                <span className="font-bold text-slate-900 text-sm block">{user.email}</span>
+                <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <ShieldCheck size={12} /> Email Verified
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Phone Number</span>
+                <span className="font-bold text-slate-900 text-sm block">{user.phone || "Not provided"}</span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Region</span>
+                <span className="font-bold text-slate-900 text-sm block">North Central Province</span>
+                <span className="text-[10px] text-slate-400">Anuradhapura & Polonnaruwa</span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+              <Link
+                to="/usersetting"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold shadow-sm transition"
+              >
+                <Settings size={14} />
+                <span>Manage Account Settings & Password</span>
+              </Link>
+
+              <button
+                onClick={async () => {
+                  await logout();
+                  navigate("/discover");
+                }}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition"
+              >
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

@@ -48,14 +48,14 @@ export default function FoodDetails() {
       setLoadingFood(true);
       setError(null);
       try {
-        const res = await axios.get(`http://localhost:5000/api/food/${id}`);
+        const res = await axios.get(`/api/food/${id}`);
         setFood(res.data);
 
         // Fetch related foods from the same shop
         const shopId = res.data.shop?._id || res.data.shop;
         if (shopId) {
           setLoadingRelated(true);
-          const relatedRes = await axios.get(`http://localhost:5000/api/food/shop/${shopId}`);
+          const relatedRes = await axios.get(`/api/food/shop/${shopId}`);
           const filtered = (Array.isArray(relatedRes.data) ? relatedRes.data : []).filter(
             (item) => item._id !== id
           );

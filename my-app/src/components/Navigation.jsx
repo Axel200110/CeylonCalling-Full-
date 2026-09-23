@@ -20,6 +20,7 @@ import {
   Moon,
   Store,
   Sun,
+  User,
   X
 } from "lucide-react";
 
@@ -28,20 +29,22 @@ export default function Navigation() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
-  // Navigation Local Language Core State: 'en' | 'si'
+  // Navigation Language State: 'en' | 'si'
   const [lang, setLang] = useState("en");
   
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
 
-  // Connect Zustand Global Auth Store State & Actions
+  // Zustand Site User Auth Store
   const { isAuthenticated, logout } = useSiteUserAuthStore();
 
-  // Multi-Language Structural Matrix (Localized Dictionary strings)
+  // Multi-Language Matrix
   const translations = useMemo(() => ({
     en: {
       home: "Home",
+      places: "Places",
+      foods: "Foods",
       about: "About",
       join: "Join Us",
       contact: "Contact",
@@ -49,11 +52,12 @@ export default function Navigation() {
       explore: "Explore Places",
       login: "User Login",
       logout: "Log Out",
-      languageName: "English",
       switchLang: "සිංහල"
     },
     si: {
       home: "මුල් පිටුව",
+      places: "ස්ථාන",
+      foods: "ආහාර",
       about: "අප ගැන",
       join: "එක්වන්න",
       contact: "සම්බන්ධ වන්න",
@@ -61,29 +65,43 @@ export default function Navigation() {
       explore: "ගවේෂණය කරන්න",
       login: "පරිශීලක පිවිසුම",
       logout: "නික්ම වන්න",
-      languageName: "සිංහල",
       switchLang: "English"
     }
   }), []);
 
-  // Navigation Links Memo Grid mapping exact component IDs
+  // Main navigation items
   const navLinks = useMemo(() => [
     { id: "header", label: translations[lang].home },
-    { label: "Places", path: "/shops" },
-    { label: "Foods", path: "/foods" },
+    { label: translations[lang].places, path: "/shops" },
+    { label: translations[lang].foods, path: "/foods" },
     { id: "about", label: translations[lang].about },
     { id: "join", label: translations[lang].join }, 
     { id: "contact", label: translations[lang].contact },
   ], [lang, translations]);
 
-
+  // Social Channels
   const socialLinks = useMemo(() => [
-    { href: "https://facebook.com/ceyloncalling", icon: <Facebook className="w-3.5 h-3.5" />, aria: "Go to Ceylon Calling Facebook Page" },
-    { href: "https://instagram.com/ceyloncalling", icon: <Instagram className="w-3.5 h-3.5" />, aria: "Go to Ceylon Calling Instagram Page" },
-    { href: "mailto:reservations@ceyloncalling.lk", icon: <Mail className="w-3.5 h-3.5" />, aria: "Send email directly to Ceylon Calling Desk" }
+    {
+      href: "https://facebook.com/ceyloncalling",
+      icon: <Facebook className="w-4 h-4 shrink-0" />,
+      aria: "Visit Ceylon Calling on Facebook",
+      title: "Facebook"
+    },
+    {
+      href: "https://instagram.com/ceyloncalling",
+      icon: <Instagram className="w-4 h-4 shrink-0" />,
+      aria: "Visit Ceylon Calling on Instagram",
+      title: "Instagram"
+    },
+    {
+      href: "mailto:info@ceyloncalling.lk",
+      icon: <Mail className="w-4 h-4 shrink-0" />,
+      aria: "Email Ceylon Calling Support",
+      title: "Email"
+    }
   ], []);
 
-  // Monitor Global Scroll States
+  // Monitor Global Scroll State
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -92,7 +110,7 @@ export default function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Keyboard Event Listener (Escape Key to safely exit layouts)
+  // Escape Key Listener for Mobile Drawer
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setIsMenuOpen(false);
@@ -101,13 +119,13 @@ export default function Navigation() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Structural Scrolling Lock for active modals
+  // Lock Body Scroll when Mobile Menu is open
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "unset";
     return () => { document.body.style.overflow = "unset"; };
   }, [isMenuOpen]);
 
-  // Handle click vectors pointing away from mobile sheet layout context
+  // Handle outside clicks on mobile drawer
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -124,7 +142,6 @@ export default function Navigation() {
     setLang((prev) => (prev === "en" ? "si" : "en"));
   };
 
-  // Centralized Dynamic Auth Routing and Action Trigger Handler with Advanced Toast
   const handleAuthAction = async () => {
     if (isAuthenticated) {
       await toast.promise(
@@ -133,20 +150,17 @@ export default function Navigation() {
           navigate("/");
         })(),
         {
-          loading: 'Terminating session securely...',
+          loading: "Logging out safely...",
           success: (
             <div className="flex flex-col text-left">
-              <span className="font-bold text-slate-900 text-sm">Logged Out Safely</span>
-              <span className="text-xs text-slate-400 font-medium">Your active session cache has been cleared.</span>
+              <span className="font-bold text-slate-900 text-sm">Logged Out</span>
+              <span className="text-xs text-slate-500 font-medium">Your session was closed safely.</span>
             </div>
           ),
-          error: 'Failed to terminate session safely.',
+          error: "Failed to log out safely.",
         },
         {
-          success: {
-            duration: 4000,
-            icon: '🔒',
-          }
+          success: { duration: 3000, icon: "🔒" },
         }
       );
     } else {
@@ -156,65 +170,67 @@ export default function Navigation() {
 
   return (
     <>
-      {/* High-Fidelity Progress Indicator Bar */}
+      {/* Scroll Progress Bar */}
       <motion.div 
-        className="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 z-[70] origin-[0%]"
+        className="fixed top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 z-[70] origin-[0%]"
         style={{ scaleX: scrollYProgress }}
       />
 
-      {/* Main Bar Navigation Layer Container */}
+      {/* Main Navbar */}
       <motion.nav
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        transition={{ duration: 0.3 }}
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
           scrolled 
-            ? "py-2.5 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/40 dark:border-slate-800/40 shadow-[0_4px_30_rgba(0,0,0,0.02)] backdrop-blur-xl" 
-            : "py-4 bg-transparent border-b border-transparent backdrop-blur-none"
+            ? "bg-slate-950/90 dark:bg-slate-950/95 border-b border-white/10 shadow-xl backdrop-blur-xl py-2.5" 
+            : "bg-slate-950/60 border-b border-white/5 backdrop-blur-md py-3.5"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
           
-          {/* LEFT: Logo Identity Frame Cluster */}
+          {/* ================================================================= */}
+          {/* 1. BRAND / LOGO AREA                                              */}
+          {/* ================================================================= */}
           <div 
             onClick={() => navigate("/")} 
-            className="flex items-center gap-2.5 cursor-pointer group select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-xl p-1"
+            className="flex items-center gap-3 cursor-pointer select-none shrink-0 group focus:outline-none"
             role="button"
             tabIndex={0}
-            aria-label="Ceylon Calling Navigation Home"
+            aria-label="Ceylon Calling Home"
             onKeyDown={(e) => { if (e.key === 'Enter') navigate("/"); }}
           >
-            <div className="relative">
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-emerald-500/30 group-hover:ring-emerald-400 transition-all shadow-md">
               <img
                 src={Logo}
-                alt="Ceylon Calling"
-                className={`rounded-full object-cover ring-2 ring-neutral-200/40 dark:ring-slate-800/80 transition-all duration-300 ${
-                  scrolled ? "h-8 w-8" : "h-9 w-9 md:h-10 md:w-10"
-                }`}
+                alt="Ceylon Calling Emblem"
+                className="w-full h-full object-cover"
               />
             </div>
             <div className="flex flex-col">
-              <span className={`font-semibold tracking-tight text-neutral-900 dark:text-white transition-all duration-300 ${
-                scrolled ? "text-base" : "text-lg md:text-xl"
-              }`}>
-                Ceylon <span className="text-emerald-600 dark:text-emerald-400 font-medium">Calling</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-base sm:text-lg tracking-tight text-white group-hover:text-emerald-300 transition-colors">
+                  Ceylon <span className="text-emerald-400 font-semibold">Calling</span>
+                </span>
+              </div>
+              <span className="text-[9px] text-emerald-400/80 font-bold uppercase tracking-widest -mt-0.5">
+                North Central
               </span>
-              <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold tracking-widest uppercase -mt-0.5">
-                North Central Index
-              </p>
             </div>
           </div>
 
-          {/* CENTER: Minimalist Desktop Navigation Rail Tracks */}
-          <div className="hidden lg:flex items-center gap-1 bg-neutral-100/60 dark:bg-slate-800/40 p-1 rounded-full border border-neutral-200/20 dark:border-slate-700/20">
+          {/* ================================================================= */}
+          {/* 2. MAIN HORIZONTAL NAVIGATION LINKS                               */}
+          {/* ================================================================= */}
+          <div className="hidden lg:flex items-center gap-1 xl:gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md shrink-0">
             {navLinks.map((item) => (
               item.path ? (
                 <button
                   key={item.label}
                   onClick={() => navigate(item.path)}
-                  className="relative px-4 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full cursor-pointer transition-all duration-200 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 border-none bg-transparent font-medium"
+                  className="h-8 px-3.5 inline-flex items-center justify-center text-xs xl:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-all duration-150 whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  <span className="relative z-10">{item.label}</span>
+                  {item.label}
                 </button>
               ) : (
                 <ScrollLink
@@ -223,235 +239,242 @@ export default function Navigation() {
                   smooth={true}
                   duration={500}
                   spy={true}
-                  offset={-80}
-                  activeClass="!text-emerald-700 dark:!text-emerald-400 bg-white dark:bg-slate-900 shadow-[0_2px_6px_rgba(0,0,0,0.03)] font-medium"
-                  className="relative px-4 py-1.5 text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full cursor-pointer transition-all duration-200 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  offset={-90}
+                  activeClass="!text-emerald-300 !bg-emerald-500/20 !border-emerald-500/30 font-semibold"
+                  className="h-8 px-3.5 inline-flex items-center justify-center text-xs xl:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-all duration-150 whitespace-nowrap cursor-pointer border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  <span className="relative z-10">{item.label}</span>
+                  {item.label}
                 </ScrollLink>
               )
             ))}
           </div>
 
+          {/* ================================================================= */}
+          {/* 3. SOCIAL ICONS CLUSTER                                           */}
+          {/* ================================================================= */}
+          <div className="hidden xl:flex items-center gap-2 shrink-0">
+            {socialLinks.map((social, idx) => (
+              <a
+                key={idx}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={social.aria}
+                title={social.title}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.12] border border-white/10 hover:border-emerald-500/40 text-slate-300 hover:text-emerald-400 inline-flex items-center justify-center transition-all duration-200 shadow-sm shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                {social.icon}
+              </a>
+            ))}
+          </div>
 
-          {/* RIGHT: High-Fidelity Utility & CTA Matrix Grid */}
-          <div className="hidden lg:flex items-center gap-3">
+          {/* Subtle Vertical Divider */}
+          <div className="hidden xl:block h-5 w-px bg-white/10 shrink-0" />
+
+          {/* ================================================================= */}
+          {/* 4. RIGHT-SIDE ACTION AREA (Vertically Centered)                   */}
+          {/* ================================================================= */}
+          <div className="hidden lg:flex items-center gap-2.5 xl:gap-3 shrink-0">
             
-            {/* Social Track Matrix */}
-            <div className="flex items-center gap-1.5 border-r border-neutral-200/60 dark:border-slate-800 pr-3">
-              {socialLinks.map((social, idx) => (
-                <a
-                  key={idx}
-                  href={social.href}
-                  aria-label={social.aria}
-                  className="w-7 h-7 rounded-full bg-neutral-100/50 dark:bg-slate-800/40 border border-neutral-200/20 text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-900 flex items-center justify-center transition-all duration-200 shadow-sm"
-                >
-                  {social.icon}
-                </a>
-              ))}
-            </div>
-
-            {/* Language Selection Switcher */}
+            {/* Language Switcher: [ සිංහල ] / [ English ] */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-slate-800/60 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="h-9 px-3.5 rounded-full bg-white/[0.04] hover:bg-white/[0.10] border border-white/10 hover:border-white/20 text-slate-200 hover:text-white inline-flex items-center justify-center gap-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               aria-label={`Switch language to ${translations[lang].switchLang}`}
+              title={`Switch language to ${translations[lang].switchLang}`}
             >
-              <Globe className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="font-sans text-[11px] tracking-wide">{translations[lang].switchLang}</span>
+              <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="font-sans leading-none">{translations[lang].switchLang}</span>
             </button>
 
-            {/* Micro Layout Color Switcher */}
+            {/* Shop Login Button */}
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-full hover:bg-neutral-100 dark:hover:bg-slate-800/60 transition-all duration-200 focus:outline-none"
-              aria-label="Toggle layout color environment"
+              onClick={() => navigate("/login-shop")}
+              className="h-9 px-3.5 rounded-full bg-white/[0.05] hover:bg-white/[0.12] border border-white/15 hover:border-emerald-500/40 text-slate-200 hover:text-white inline-flex items-center justify-center gap-2 text-xs font-semibold whitespace-nowrap transition-all duration-200 shadow-sm shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 group"
+              title="Shop Owner Portal"
             >
-              {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
-
-            {/* Secondary CTA Outlined Button Link */}
-            <button
-              onClick={() => navigate("/login")}
-              className="group flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] bg-white font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-slate-800 hover:border-neutral-900 dark:hover:border-slate-400 rounded-full transition-all duration-200 focus:outline-none"
-            >
-              <Store size={12} className="text-neutral-400" />
+              <Store className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
               <span>{translations[lang].vendor}</span>
-              <ArrowUpRight size={11} className="text-neutral-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-150" />
+              <ArrowUpRight className="w-3 h-3 text-slate-400 group-hover:text-emerald-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
 
-            {/* INTEGRATED DYNAMIC DESKTOP AUTH BUTTON */}
+            {/* User Login / Logout Button */}
             <motion.button
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleAuthAction}
-              className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-200 focus:outline-none focus:ring-2 ${
-                isAuthenticated 
-                  ? "bg-red-500/10 border border-red-500/20 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 shadow-sm"
-                  : scrolled
-                    ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                    : "bg-white text-slate-900 shadow-sm hover:bg-slate-50 border border-neutral-200 dark:border-slate-800"
+              className={`h-9 px-4 rounded-full inline-flex items-center justify-center gap-2 text-xs font-bold whitespace-nowrap transition-all duration-200 shadow-sm shrink-0 focus:outline-none focus-visible:ring-2 ${
+                isAuthenticated
+                  ? "bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500 hover:text-white hover:border-rose-500"
+                  : "bg-white/[0.08] hover:bg-white/[0.16] border border-white/20 text-white hover:border-white/30"
               }`}
             >
-              {isAuthenticated ? <LogOut size={12} /> : <LogIn size={12} />}
-              <span>{isAuthenticated ? translations[lang].logout : translations[lang].login}</span>
+              {isAuthenticated ? (
+                <>
+                  <LogOut className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                  <span>{translations[lang].logout}</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span>{translations[lang].login}</span>
+                </>
+              )}
             </motion.button>
 
-            {/* Primary Modern Gradient CTA Action Button */}
+            {/* Explore Places (Primary CTA Button) */}
             <button
               onClick={() => navigate("/discover")}
-              className="relative group overflow-hidden px-4 py-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-medium shadow-md hover:shadow-emerald-600/10 transition-all duration-200 hover:-translate-y-0.5 focus:outline-none"
+              className="h-9 px-4.5 rounded-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-[0.98] text-white inline-flex items-center justify-center gap-2 text-xs font-bold whitespace-nowrap shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
-              <div className="relative z-10 flex items-center gap-1.5">
-                <Compass size={12} className="animate-spin-slow" />
-                <span>{translations[lang].explore}</span>
-              </div>
-              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-white/10 via-transparent to-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out" />
+              <Compass className="w-3.5 h-3.5 shrink-0 animate-spin-slow" />
+              <span>{translations[lang].explore}</span>
             </button>
           </div>
 
-          {/* RIGHT MOBILE CONTAINER: Structural Responsive Control Layouts */}
-          <div className="flex lg:hidden items-center gap-2">
+          {/* ================================================================= */}
+          {/* MOBILE / TABLET RIGHT CONTROLS                                    */}
+          {/* ================================================================= */}
+          <div className="flex lg:hidden items-center gap-2 shrink-0">
+            {/* Mobile Language Button */}
             <button 
               onClick={toggleLanguage}
-              className="px-2.5 py-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-slate-800 rounded-full flex items-center gap-1"
-              aria-label="Change language track mobile"
+              className="h-8 px-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-slate-300 flex items-center gap-1.5 focus:outline-none"
+              aria-label="Toggle language on mobile"
             >
-              <Globe className="w-3 h-3" />
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
               <span>{translations[lang].switchLang}</span>
             </button>
             
+            {/* Hamburger / Close Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 rounded-xl bg-neutral-100 dark:bg-slate-800 text-neutral-900 dark:text-white transition-all active:scale-95 focus:outline-none"
-              aria-label="Open mobile navigation overlay sheet"
+              className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 text-white flex items-center justify-center active:scale-95 transition-all focus:outline-none"
+              aria-label="Open navigation menu"
               aria-expanded={isMenuOpen}
             >
-              {isMenuOpen ? <X size={16} strokeWidth={2.5} /> : <Menu size={16} strokeWidth={2.5} />}
+              {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
 
-        {/* CASCADING MOBILE PANEL SHEET */}
+        {/* ================================================================= */}
+        {/* MOBILE CASCADING OVERLAY DRAWER                                   */}
+        {/* ================================================================= */}
         <AnimatePresence>
           {isMenuOpen && (
-            <motion.div
-              ref={menuRef}
-              initial={{ opacity: 0, y: -15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed top-[57px] left-0 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-b border-neutral-200/60 dark:border-slate-800/60 shadow-2xl z-40 rounded-b-3xl overflow-hidden lg:hidden"
-            >
-              <div className="px-6 py-8 flex flex-col space-y-6 max-h-[calc(100vh-80px)] overflow-y-auto">
-                
-                {/* Mobile Navigation List Links */}
-                <motion.ul 
-                  className="space-y-1"
-                  initial="closed"
-                  animate="open"
-                  variants={{
-                    open: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } }
-                  }}
-                >
-                  {navLinks.map((item) => (
-                    <motion.li 
-                      key={item.id || item.label}
-                      variants={{
-                        open: { y: 0, opacity: 1 },
-                        closed: { y: 8, opacity: 0 }
+            <>
+              {/* Dim Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMenuOpen(false)}
+                className="fixed inset-0 top-16 bg-slate-950/80 backdrop-blur-md z-30 lg:hidden"
+              />
+
+              {/* Drawer Sheet */}
+              <motion.div
+                ref={menuRef}
+                initial={{ opacity: 0, y: -15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.2 }}
+                className="absolute top-full left-0 w-full bg-slate-900 border-b border-white/10 shadow-2xl z-40 rounded-b-3xl overflow-hidden lg:hidden"
+              >
+                <div className="px-6 py-6 flex flex-col space-y-5 max-h-[calc(100vh-80px)] overflow-y-auto">
+                  
+                  {/* Nav Links */}
+                  <div className="space-y-1">
+                    {navLinks.map((item) => (
+                      <div key={item.id || item.label}>
+                        {item.path ? (
+                          <button
+                            onClick={() => {
+                              navigate(item.path);
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full text-left py-2.5 px-3 rounded-xl text-sm font-medium text-slate-200 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                          >
+                            {item.label}
+                          </button>
+                        ) : (
+                          <ScrollLink
+                            to={item.id}
+                            smooth={true}
+                            duration={500}
+                            offset={-80}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="block py-2.5 px-3 rounded-xl text-sm font-medium text-slate-200 hover:text-emerald-400 hover:bg-white/5 transition-colors cursor-pointer"
+                          >
+                            {item.label}
+                          </ScrollLink>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="h-px bg-white/10" />
+
+                  {/* Actions in Mobile Sheet */}
+                  <div className="flex flex-col gap-2.5">
+                    <button
+                      onClick={() => {
+                        navigate("/discover");
+                        setIsMenuOpen(false);
                       }}
+                      className="h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20"
                     >
-                      {item.path ? (
-                        <button
-                          onClick={() => {
-                            navigate(item.path);
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full text-left block text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-emerald-600 py-2.5 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-900/60 transition-colors border-none bg-transparent"
-                        >
-                          {item.label}
-                        </button>
-                      ) : (
-                        <ScrollLink
-                          to={item.id}
-                          smooth={true}
-                          duration={500}
-                          offset={-70}
-                          onClick={() => setIsMenuOpen(false)}
-                          className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 hover:text-emerald-600 py-2.5 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-900/60 transition-colors"
-                        >
-                          {item.label}
-                        </ScrollLink>
-                      )}
-                    </motion.li>
-                  ))}
+                      <Compass size={16} />
+                      <span>{translations[lang].explore}</span>
+                    </button>
 
-                </motion.ul>
-
-                <div className="h-px bg-neutral-100 dark:bg-slate-800/80" />
-
-                {/* Mobile Direct Action System Hub */}
-                <div className="flex flex-col space-y-2.5">
-                  <button
-                    onClick={() => {
-                      navigate("/discover");
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium text-xs shadow-sm"
-                  >
-                    <Compass size={14} />
-                    <span>{translations[lang].explore}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      navigate("/login");
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-neutral-200 dark:border-slate-800 text-neutral-800 dark:text-neutral-200 font-medium text-xs hover:bg-neutral-50 dark:hover:bg-slate-900 transition-colors"
-                  >
-                    <Store size={14} />
-                    <span>{translations[lang].vendor}</span>
-                  </button>
-
-                  {/* DYNAMIC MOBILE AUTH ACTION BUTTON */}
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      handleAuthAction();
-                      setIsMenuOpen(false);
-                    }}
-                    className={`flex items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 ${
-                      isAuthenticated
-                        ? "bg-red-50 text-red-600 hover:bg-red-100/70 dark:bg-red-950/20 dark:text-red-400"
-                        : scrolled || isMenuOpen
-                          ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                          : "bg-white text-slate-900 shadow-md hover:bg-slate-50"
-                    }`}
-                  >
-                    {isAuthenticated ? <LogOut size={14} /> : <LogIn size={14} />}
-                    <span>{isAuthenticated ? translations[lang].logout : translations[lang].login}</span>
-                  </motion.button>
-                </div>
-
-                <div className="h-px bg-neutral-100 dark:bg-slate-800/80" />
-
-                {/* Mobile Social Action Footer Cluster row */}
-                <div className="flex items-center justify-center gap-4 pt-2">
-                  {socialLinks.map((social, idx) => (
-                    <a
-                      key={idx}
-                      href={social.href}
-                      aria-label={social.aria}
-                      className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-slate-800 text-neutral-500 dark:text-neutral-400 flex items-center justify-center text-sm"
+                    <button
+                      onClick={() => {
+                        navigate("/login-shop");
+                        setIsMenuOpen(false);
+                      }}
+                      className="h-11 rounded-2xl bg-white/5 border border-white/10 text-white font-medium text-xs flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
                     >
-                      {social.icon}
-                    </a>
-                  ))}
-                </div>
+                      <Store size={15} className="text-emerald-400" />
+                      <span>{translations[lang].vendor}</span>
+                    </button>
 
-              </div>
-            </motion.div>
+                    <button
+                      onClick={() => {
+                        handleAuthAction();
+                        setIsMenuOpen(false);
+                      }}
+                      className={`h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                        isAuthenticated
+                          ? "bg-rose-500/15 border border-rose-500/30 text-rose-300"
+                          : "bg-white text-slate-950 hover:bg-slate-100"
+                      }`}
+                    >
+                      {isAuthenticated ? <LogOut size={15} /> : <User size={15} />}
+                      <span>{isAuthenticated ? translations[lang].logout : translations[lang].login}</span>
+                    </button>
+                  </div>
+
+                  <div className="h-px bg-white/10" />
+
+                  {/* Social Channel Links in Mobile Sheet */}
+                  <div className="flex items-center justify-center gap-3 pt-1">
+                    {socialLinks.map((social, idx) => (
+                      <a
+                        key={idx}
+                        href={social.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={social.aria}
+                        className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-emerald-400 flex items-center justify-center"
+                      >
+                        {social.icon}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </motion.nav>

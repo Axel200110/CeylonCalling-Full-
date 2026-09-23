@@ -5,7 +5,7 @@ import {
   sendResetSuccessEmail,
   sendWelcomeEmail
 } from "../mailtrap/emails.js";
-import Shop from "../models/Shop.js";
+import Shop from "../models/shop.model.js";
 import { User } from "../models/user.model.js";
 
 // ============================

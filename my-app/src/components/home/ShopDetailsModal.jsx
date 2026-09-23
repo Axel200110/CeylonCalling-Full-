@@ -30,7 +30,7 @@ export default function ShopDetailsModal({ selectedShop, foods, loadingFoods, on
           <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
             <div className="relative min-h-[280px] bg-slate-100">
               <img
-                src={selectedShop.photo ? `http://localhost:5000${selectedShop.photo}` : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80"}
+                src={selectedShop.photo ? `${selectedShop.photo}` : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80"}
                 alt={selectedShop.name}
                 className="h-full w-full object-cover"
               />

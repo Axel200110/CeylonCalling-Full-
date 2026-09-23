@@ -27,12 +27,15 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAdminStore } from "../store/adminStore";
+import ShopVerificationModal from "./ShopVerificationModal";
 
 const ShopsManagement = () => {
-  const { shops, updateShopStatus, deleteShop, createShop, updateShop, isLoading } = useAdminStore();
+  const { shops, updateShopStatus, deleteShop, createShop, updateShop, isLoading, fetchShops } = useAdminStore();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [districtFilter, setDistrictFilter] = useState("all");
+  const [verificationModalShopId, setVerificationModalShopId] = useState(null);
 
   // Modal states
   const [selectedShopId, setSelectedShopId] = useState(null);
@@ -124,6 +127,7 @@ const ShopsManagement = () => {
   // Stats calculation
   const totalCount = shops.length;
   const pendingCount = shops.filter((s) => s.status === "pending").length;
+  const changesCount = shops.filter((s) => s.status === "changes_requested").length;
   const approvedCount = shops.filter((s) => s.status === "approved").length;
   const suspendedCount = shops.filter((s) => s.status === "suspended").length;
 
@@ -266,13 +270,19 @@ const ShopsManagement = () => {
     const nameMatch = (shop.businessName || shop.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     const ownerMatch = (shop.ownerName || "").toLowerCase().includes(searchQuery.toLowerCase());
     const emailMatch = (shop.email || "").toLowerCase().includes(searchQuery.toLowerCase());
-    const locationMatch = (shop.district || shop.location || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const locationMatch = (shop.district || shop.location || shop.city || "").toLowerCase().includes(searchQuery.toLowerCase());
     const typeMatch = (shop.establishmentType || shop.category || "").toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesSearch = nameMatch || ownerMatch || emailMatch || locationMatch || typeMatch;
+    if (!matchesSearch) return false;
 
-    if (activeTab === "all") return matchesSearch;
-    return shop.status === activeTab && matchesSearch;
+    if (districtFilter !== "all") {
+      const shopDistrict = (shop.district || shop.addressDetails?.district || shop.location || "").toLowerCase();
+      if (!shopDistrict.includes(districtFilter.toLowerCase())) return false;
+    }
+
+    if (activeTab === "all") return true;
+    return shop.status === activeTab;
   });
 
   return (
@@ -336,29 +346,58 @@ const ShopsManagement = () => {
 
       {/* Search and Filters */}
       <div className="flex flex-col md:flex-row justify-between gap-4 p-4 rounded-2xl border border-gray-900 bg-[#0B0F17] shadow-lg">
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Search title, owner, email, location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-gray-800 bg-gray-950/60 py-2.5 pl-10 pr-4 text-xs text-white placeholder-gray-600 outline-none transition-all focus:border-blue-500/50"
-          />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search title, owner, town, type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-gray-800 bg-gray-950/60 py-2.5 pl-10 pr-4 text-xs text-white placeholder-gray-600 outline-none transition-all focus:border-blue-500/50"
+            />
+          </div>
+
+          {/* North Central District Selector Chips */}
+          <div className="flex items-center gap-1 bg-gray-950/80 p-1 rounded-xl border border-gray-900 shrink-0">
+            {[
+              { id: "all", label: "All North Central" },
+              { id: "anuradhapura", label: "Anuradhapura" },
+              { id: "polonnaruwa", label: "Polonnaruwa" }
+            ].map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setDistrictFilter(d.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  districtFilter === d.id
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto bg-gray-950/60 p-1 rounded-xl border border-gray-900 shrink-0 self-start md:self-center">
-          {["all", "pending", "approved", "suspended"].map((tab) => (
+          {[
+            { id: "all", label: "All" },
+            { id: "pending", label: "Pending", count: pendingCount },
+            { id: "changes_requested", label: "Needs Changes", count: changesCount },
+            { id: "approved", label: "Verified Active" },
+            { id: "suspended", label: "Suspended" }
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === tab
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === tab.id
                   ? "bg-blue-600 text-white shadow shadow-blue-600/10"
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              {tab} {tab === "pending" && pendingCount > 0 ? `(${pendingCount})` : ""}
+              {tab.label} {tab.count > 0 ? `(${tab.count})` : ""}
             </button>
           ))}
         </div>
@@ -410,7 +449,31 @@ const ShopsManagement = () => {
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-gray-300">
                             <MapPin className="h-3.5 w-3.5 text-gray-500" />
-                            <span>{shop.district || shop.location || "Anuradhapura"}</span>
+                            <span>{shop.district || shop.locationDisplay || shop.location || "Anuradhapura"}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            {shop.hasCoordinates || (shop.latitude && shop.longitude) ? (
+                              <span className="text-emerald-400 font-medium flex items-center gap-1" title={`GPS: ${shop.latitude?.toFixed(4)}, ${shop.longitude?.toFixed(4)}`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span>GPS Set</span>
+                              </span>
+                            ) : (
+                              <span className="text-amber-400 font-medium flex items-center gap-1" title="Missing exact coordinates">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span>No GPS</span>
+                              </span>
+                            )}
+                            {shop.googleMapsUrl && (
+                              <a
+                                href={shop.googleMapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 hover:underline"
+                                title="Open Google Maps direction link"
+                              >
+                                Maps ↗
+                              </a>
+                            )}
                           </div>
                           {shop.phone && (
                             <div className="flex items-center gap-1.5 text-gray-400 text-[11px]">
@@ -443,21 +506,20 @@ const ShopsManagement = () => {
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${
                           shop.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
                           shop.status === "pending" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse" :
+                          shop.status === "changes_requested" ? "bg-orange-500/10 text-orange-400 border border-orange-500/20" :
+                          shop.status === "under_review" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
                           "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                         }`}>
-                          {shop.status || "pending"}
+                          {(shop.status || "pending").replace('_', ' ')}
                         </span>
                       </td>
 
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => {
-                              setSelectedShopId(shop.id);
-                              setActivePhotoIndex(0);
-                            }}
-                            className="p-1.5 rounded-lg border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-850 transition-colors"
-                            title="Audit / Inspect Application"
+                            onClick={() => setVerificationModalShopId(shop.id)}
+                            className="p-1.5 rounded-lg border border-gray-800 text-emerald-400 hover:text-white hover:bg-emerald-500/10 transition-colors"
+                            title="Comprehensive Verification & Inspection"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -1193,6 +1255,17 @@ const ShopsManagement = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* COMPREHENSIVE SHOP VERIFICATION & INSPECTION MODAL */}
+      {verificationModalShopId && (
+        <ShopVerificationModal
+          shopId={verificationModalShopId}
+          onClose={() => setVerificationModalShopId(null)}
+          onActionSuccess={() => {
+            fetchShops && fetchShops();
+          }}
+        />
       )}
     </div>
   );

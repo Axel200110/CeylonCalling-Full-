@@ -7,9 +7,9 @@ import {
   FaUserCircle
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import ChangePassword from '../components/ChangePasswordModel';
+import ChangePassword from '../components/ChangePasswordModal';
 import Navigation from '../components/NavigationPage';
-import UpdateProfile from '../components/UpdateProfileModel';
+import UpdateProfile from '../components/UpdateProfileModal';
 import { useSiteUserAuthStore } from '../store/siteUserAuthStore';
 
 const containerVariants = {

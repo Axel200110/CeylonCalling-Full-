@@ -14,7 +14,7 @@ import {
     UserPlus
 } from "lucide-react";
 import { useState } from "react";
-import RestaurantInterior from "../assets/About.jpg";
+import RestaurantInterior from "../assets/restaurant_opt.jpg";
 
 // --- Framer Motion Animation Variants ---
 const fadeInUp = {

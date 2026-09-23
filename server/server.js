@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import helmet from "helmet";
+import zlib from "node:zlib";
 
 import connectDB from "./config/connectToDb.js";
 import shopRoutes from "./routes/shopRoutes.js";
@@ -20,6 +22,9 @@ import Placecomm from "./routes/pcomment.route.js";
 import partnerRoutes from "./routes/partnerRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import shopOwnerRoutes from "./routes/shopOwnerRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,17 +37,50 @@ if (!process.env.SESSION_SECRET) throw new Error("SESSION_SECRET is not set in .
 
 const app = express();
 
+// Security headers. "helmet" was already a package.json dependency but was
+// never actually wired in anywhere, so the app was shipping with none of its
+// protections (clickjacking, MIME sniffing, etc.).
+// - contentSecurityPolicy is disabled: a default-locked-down CSP tends to
+//   break things it wasn't tuned for (Cloudinary/Google avatar images, the
+//   built Vite SPA's assets) and isn't safe to turn on blind.
+// - crossOriginResourcePolicy is relaxed to "cross-origin" so images served
+//   from /uploads can still be loaded by the frontend when it's on a
+//   different origin (e.g. localhost:5173 in dev).
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
+const allowedOrigins = [
+  clientUrl,
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:5000",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 app.use(express.json());
 app.use(cookieParser());
+
+const isProduction = process.env.NODE_ENV === "production";
 
 app.use(
   session({
@@ -57,13 +95,55 @@ app.use(
     cookie: {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7,
-      secure: false,
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
     },
   })
 );
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Native HTTP Gzip Response Compression Middleware
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers["accept-encoding"] || "";
+  if (!acceptEncoding.includes("gzip") || req.method === "HEAD") {
+    return next();
+  }
+
+  const originalSend = res.send;
+  res.send = function (body) {
+    if (res.headersSent || !body) return originalSend.call(this, body);
+    const contentType = String(res.getHeader("content-type") || "");
+    if (
+      contentType.includes("json") ||
+      contentType.includes("text") ||
+      contentType.includes("javascript")
+    ) {
+      const buffer = Buffer.isBuffer(body)
+        ? body
+        : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
+
+      if (buffer.length > 1024) {
+        zlib.gzip(buffer, (err, compressed) => {
+          if (err) return originalSend.call(this, body);
+          res.setHeader("Content-Encoding", "gzip");
+          res.setHeader("Content-Length", compressed.length);
+          res.removeHeader("ETag");
+          return originalSend.call(this, compressed);
+        });
+        return;
+      }
+    }
+    return originalSend.call(this, body);
+  };
+  next();
+});
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), {
+    maxAge: "7d",
+    immutable: true,
+  })
+);
 
 app.get("/", (req, res) => {
   res.json({
@@ -85,6 +165,9 @@ app.use("/api/placecomment",Placecomm);
 app.use("/api/partners", partnerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/shopowner", shopOwnerRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Production client serve
 if (process.env.NODE_ENV === "production") {

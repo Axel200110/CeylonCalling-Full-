@@ -9,7 +9,7 @@ export default function FoodCard({ food, idx }) {
   const mainImage = food.picture
     ? food.picture.startsWith("http")
       ? food.picture
-      : `http://localhost:5000${food.picture}`
+      : `${food.picture}`
     : "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80"; // Fallback pizza / food image
 
   const [imageSrc, setImageSrc] = useState(mainImage);

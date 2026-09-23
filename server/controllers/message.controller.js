@@ -1,6 +1,6 @@
-import Message from "../models/Message.js";
+import Message from "../models/message.model.js";
 import { User } from "../models/user.model.js";
-import Shop from "../models/Shop.js";
+import Shop from "../models/shop.model.js";
 
 // Send message (Shop Owner to Admin)
 export const sendMessageToAdmin = async (req, res) => {

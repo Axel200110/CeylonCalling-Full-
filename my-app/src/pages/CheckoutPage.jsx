@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag,
@@ -13,11 +14,21 @@ import {
   Truck,
   Utensils,
   ShoppingBag as BagIcon,
+  Copy,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import CustomerHeader from "../components/customer/CustomerHeader";
 import { resolveImageUrl, formatLKR } from "../utils/formatters";
 import { useCartStore } from "../store/useCartStore";
 import { useSiteUserAuthStore } from "../store/siteUserAuthStore";
+import notify from "../utils/toast";
+
+const API_BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/$/, "")
+  : import.meta.env.MODE === "development"
+  ? ""
+  : "";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -25,41 +36,94 @@ export default function CheckoutPage() {
   const { user, isAuthenticated } = useSiteUserAuthStore();
 
   const [orderType, setOrderType] = useState("dine_in"); // 'dine_in', 'takeaway', 'delivery'
+  const [guestName, setGuestName] = useState(user?.name || "");
+  const [guestEmail, setGuestEmail] = useState(user?.email || "");
   const [contactNumber, setContactNumber] = useState(user?.phone || "");
   const [addressOrTable, setAddressOrTable] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderConfirmed, setOrderConfirmed] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const totalPrice = getTotalPrice();
   const totalItems = getTotalItems();
 
+  // Guest checkout is allowed — logged-in users just get their details pre-filled.
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/user/login", { state: { returnTo: "/checkout" } });
+    if (isAuthenticated && user?.name) setGuestName(user.name);
+    if (isAuthenticated && user?.email) setGuestEmail(user.email);
+    if (isAuthenticated && user?.phone) setContactNumber(user.phone);
+  }, [isAuthenticated, user]);
+
+  const handleCopyReference = () => {
+    if (orderConfirmed?.orderNumber) {
+      navigator.clipboard.writeText(orderConfirmed.orderNumber);
+      setCopied(true);
+      notify.success("Order reference copied to clipboard.");
+      setTimeout(() => setCopied(false), 2500);
     }
-  }, [isAuthenticated, navigate]);
-
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
-    if (items.length === 0) return;
-
-    setIsPlacingOrder(true);
-    setTimeout(() => {
-      const orderNum = "CC-" + Math.floor(100000 + Math.random() * 900000);
-      setOrderConfirmed({
-        orderNumber: orderNum,
-        restaurantName: currentShop?.name || "Partner Restaurant",
-        total: totalPrice,
-        itemCount: totalItems,
-        orderType,
-      });
-      clearCart();
-      setIsPlacingOrder(false);
-    }, 1200);
   };
 
-  if (!isAuthenticated) return null;
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+    const shopId = currentShop?._id || currentShop?.id;
+    if (!shopId) {
+      notify.warning("Cart error: Restaurant information missing");
+      return;
+    }
+    if (!guestName.trim()) {
+      notify.warning("Please provide your name");
+      return;
+    }
+    if (!contactNumber.trim()) {
+      notify.warning("Please provide a contact phone number");
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      const orderPayload = {
+        shopId: shopId,
+        items: items.map((it) => ({
+          foodId: it.foodId || it.food?._id || it._id || it.id,
+          name: it.food?.name || it.name,
+          quantity: it.quantity,
+          price: it.food?.discountPrice && it.food?.discountPrice > 0 ? it.food.discountPrice : (it.food?.price || it.price),
+        })),
+        customerName: guestName.trim(),
+        customerContact: contactNumber.trim(),
+        customerEmail: guestEmail.trim(),
+        serviceType: orderType,
+        deliveryAddress: addressOrTable.trim(),
+        paymentMethod: "cash_on_delivery",
+        specialNotes: specialInstructions.trim(),
+      };
+
+      const res = await axios.post(`${API_BASE}/api/orders`, orderPayload, {
+        withCredentials: true,
+      });
+
+      if (res.data?.success && res.data?.order) {
+        const confirmedOrder = res.data.order;
+        setOrderConfirmed({
+          orderNumber: confirmedOrder.orderReference,
+          restaurantName: confirmedOrder.shopName || currentShop?.name || "Partner Restaurant",
+          total: confirmedOrder.totalAmount || totalPrice,
+          itemCount: totalItems,
+          orderType: confirmedOrder.serviceType || orderType,
+          items: confirmedOrder.items || items,
+          isGuest: confirmedOrder.isGuest ?? !isAuthenticated,
+        });
+        clearCart();
+        notify.success("Order placed successfully.");
+      }
+    } catch (err) {
+      console.error("Order placement failed:", err);
+      notify.error(err, "Unable to place the order. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/40 flex flex-col">
@@ -70,58 +134,113 @@ export default function CheckoutPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl border border-slate-100 p-8 sm:p-12 shadow-sm text-center max-w-lg mx-auto space-y-6 text-slate-800 my-8"
+            className="bg-white rounded-3xl border border-slate-100 p-6 sm:p-10 shadow-sm text-center max-w-lg mx-auto space-y-5 text-slate-800 my-8"
           >
-            <div className="w-20 h-20 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
-              <CheckCircle2 size={40} />
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
+              <CheckCircle2 size={32} />
             </div>
 
-            <div className="space-y-2">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-600">
-                Order Confirmed
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+                Order Placed Successfully
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900">
                 Thank You for Your Order!
               </h1>
-              <p className="text-xs text-slate-400 font-medium">
-                Reference ID: <strong className="text-slate-700">{orderConfirmed.orderNumber}</strong>
+              <p className="text-xs text-slate-500">
+                Your order is currently pending restaurant confirmation.
               </p>
             </div>
 
+            {/* Prominent Order Reference Box */}
+            <div className="p-3.5 rounded-2xl bg-slate-900 text-white flex items-center justify-between gap-3 shadow-sm">
+              <div className="text-left">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  Order Reference
+                </span>
+                <span className="text-sm sm:text-base font-mono font-bold text-emerald-400">
+                  {orderConfirmed.orderNumber}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyReference}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition active:scale-95"
+                title="Copy Reference"
+              >
+                {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+
+            {/* Guest notice */}
+            {orderConfirmed.isGuest ? (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-left space-y-1">
+                <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                  <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                  <span>Important for Guest Orders</span>
+                </p>
+                <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+                  Please save or screenshot your Order Reference Number. You can use this reference when contacting the business about your order.
+                </p>
+              </div>
+            ) : null}
+
+            {/* Order Summary Card */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-left space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Restaurant:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Business:</span>
                 <span className="font-bold text-slate-800">{orderConfirmed.restaurantName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Order Option:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Order Type:</span>
                 <span className="font-bold text-slate-800 capitalize">{orderConfirmed.orderType.replace("_", " ")}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Total Items:</span>
-                <span className="font-bold text-slate-800">{orderConfirmed.itemCount}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Status:</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200">
+                  Pending Confirmation
+                </span>
               </div>
+
+              {/* Items Breakdown */}
+              {Array.isArray(orderConfirmed.items) && orderConfirmed.items.length > 0 && (
+                <div className="pt-2 border-t border-slate-200/80 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Items:</span>
+                  {orderConfirmed.items.map((it, idx) => (
+                    <div key={idx} className="flex justify-between text-slate-700">
+                      <span>{it.quantity}x {it.name}</span>
+                      <span className="font-mono text-slate-600">{formatLKR(it.price * it.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-slate-900 text-sm">
                 <span>Total Amount:</span>
                 <span className="text-emerald-600">{formatLKR(orderConfirmed.total)}</span>
               </div>
             </div>
 
+            {/* Action buttons */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <Link
                 to="/discover"
-                className="flex-1 py-3.5 rounded-2xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-md"
+                className="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-bold transition shadow-sm"
               >
                 Back to Discovery
               </Link>
-              <Link
-                to="/user/profile"
-                className="flex-1 py-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
-              >
-                View Account
-              </Link>
+              {!orderConfirmed.isGuest && (
+                <Link
+                  to="/profile"
+                  className="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
+                >
+                  View in My Orders
+                </Link>
+              )}
             </div>
           </motion.div>
+
         ) : items.length === 0 ? (
           <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center space-y-4 shadow-sm max-w-md mx-auto my-12">
             <div className="space-y-1">
@@ -197,6 +316,35 @@ export default function CheckoutPage() {
                   </h3>
 
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        placeholder="Your name"
+                        required
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                    </div>
+
+                    {!isAuthenticated && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          Email (optional)
+                        </label>
+                        <input
+                          type="email"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
                         Contact Phone Number <span className="text-red-500">*</span>

@@ -420,28 +420,21 @@ export const RESTAURANT_SERVICES = [
 ];
 
 /**
- * Sri Lankan Districts System
+ * Sri Lankan Districts System (Scoped to North Central Province)
  */
 export const SRI_LANKAN_DISTRICTS = [
   { id: "anuradhapura", label: "Anuradhapura", sinhala: "අනුරාධපුරය", emoji: "🏛️", icon: MapPin },
   { id: "polonnaruwa", label: "Polonnaruwa", sinhala: "පොළොන්නරුව", emoji: "🏛️", icon: Compass },
-  { id: "colombo", label: "Colombo", sinhala: "කොළඹ", emoji: "🏙️", icon: MapPin },
-  { id: "kandy", label: "Kandy", sinhala: "මහනුවර", emoji: "🛕", icon: MapPin },
-  { id: "galle", label: "Galle", sinhala: "ගාල්ල", emoji: "🌊", icon: MapPin },
-  { id: "matale", label: "Sigiriya / Matale", sinhala: "සීගිරිය / මාතලේ", emoji: "🏰", icon: MapPin },
-  { id: "badulla", label: "Ella / Badulla", sinhala: "ඇල්ල / බදුල්ල", emoji: "⛰️", icon: MapPin },
-  { id: "nuwara_eliya", label: "Nuwara Eliya", sinhala: "නුවරඑළිය", emoji: "☕", icon: MapPin },
-  { id: "matara", label: "Matara / Mirissa", sinhala: "මාතර", emoji: "🏖️", icon: MapPin },
-  { id: "trincomalee", label: "Trincomalee", sinhala: "ත්‍රිකුණාමලය", emoji: "⛵", icon: MapPin },
-  { id: "jaffna", label: "Jaffna", sinhala: "යාපනය", emoji: "🌴", icon: MapPin },
 ];
+
+export { getCitiesByDistrict, SRI_LANKA_REGIONS } from "../../data/locationRegistry";
 
 /* Core Infrastructure Guard Constraints */
 export const MAX_PHOTOS = 5;
 export const MAX_CATEGORIES = 4;
 
 /* API Routing Gateway Endpoints */
-export const API_ENDPOINT = "http://localhost:5000/api/partners/register";
+export const API_ENDPOINT = "/api/partners/register";
 
 /**
  * Cross-Reference Dictionary Maps

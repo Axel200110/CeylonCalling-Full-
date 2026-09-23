@@ -24,7 +24,25 @@ export const validateStep1 = (formData) => {
   }
 
   if (!formData.district) {
-    errors.district = "Please select a district";
+    errors.district = "Please select a district (Anuradhapura or Polonnaruwa)";
+  }
+
+  if (!formData.city) {
+    errors.city = "Please select a town or tourism zone";
+  }
+
+  if (formData.latitude !== undefined && formData.latitude !== "") {
+    const lat = Number(formData.latitude);
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      errors.latitude = "Latitude must be a valid number between -90 and 90";
+    }
+  }
+
+  if (formData.longitude !== undefined && formData.longitude !== "") {
+    const lng = Number(formData.longitude);
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      errors.longitude = "Longitude must be a valid number between -180 and 180";
+    }
   }
 
   if (!formData.password) {
@@ -43,8 +61,9 @@ export const validateStep1 = (formData) => {
 export const validateStep2 = (formData) => {
   const errors = {};
 
-  if (!formData.categories || formData.categories.length === 0) {
-    errors.categories = "Please select at least one category";
+  // Categories only required if food is provided or establishment is restaurant
+  if (formData.hasFood !== false && (!formData.categories || formData.categories.length === 0)) {
+    errors.categories = "Please select at least one relevant category or specialization";
   }
 
   return errors;

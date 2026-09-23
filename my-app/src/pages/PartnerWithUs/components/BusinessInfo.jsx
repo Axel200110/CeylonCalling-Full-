@@ -14,11 +14,12 @@ import {
     Phone,
     ShieldCheck,
     Store,
-    User
+    User,
+    Navigation,
 } from "lucide-react";
 import { useState } from "react";
 import Input from "../../../shopowner/components/Input";
-import { ESTABLISHMENT_TYPES, SRI_LANKAN_DISTRICTS } from "../constants";
+import { ESTABLISHMENT_TYPES, SRI_LANKAN_DISTRICTS, getCitiesByDistrict } from "../constants";
 
 const BusinessInfo = ({ formData, errors = {}, onInputChange, onEstablishmentChange }) => {
   // Safe destructuring with structural fallbacks to guard against rendering crashes
@@ -30,8 +31,16 @@ const BusinessInfo = ({ formData, errors = {}, onInputChange, onEstablishmentCha
     password = "", 
     confirmPassword = "", 
     district = "", 
+    city = "",
+    streetAddress = "",
+    latitude = "",
+    longitude = "",
     establishmentType = "", 
-    businessDescription = "" 
+    businessDescription = "",
+    hasFood = true,
+    hasAccommodation = false,
+    totalUnits = "",
+    startingPricePerNight = ""
   } = formData || {};
 
   // Interactive password masking states
@@ -307,55 +316,248 @@ const BusinessInfo = ({ formData, errors = {}, onInputChange, onEstablishmentCha
         )}
       </div>
 
-      {/* SECTION 5: Regional Hub Geolocation Setup */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
-          <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-            <MapPin className="w-5 h-5" />
+      {/* SECTION 5: North Central Province Regional Placement */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 md:p-6 shadow-sm space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Regional Destination Placement</h3>
+              <p className="text-xs text-slate-400">Exclusively verifying tourism venues within the North Central Province.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Destination Hub Placement</h3>
-            <p className="text-xs text-slate-400">Define the regional geopolitical hub where operations are hosted.</p>
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-extrabold">
+            <ShieldCheck size={14} className="text-emerald-600" />
+            North Central Province
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* District Picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+              District <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative group">
+              <select
+                id="district"
+                name="district"
+                value={district}
+                onChange={onInputChange}
+                className={`w-full rounded-xl border appearance-none bg-white pl-4 pr-10 py-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 hover:border-slate-300 transition-all duration-200 cursor-pointer ${
+                  errors.district ? "border-rose-300 bg-rose-50/20" : "border-slate-200"
+                }`}
+                aria-invalid={!!errors.district}
+              >
+                <option value="">Select District</option>
+                {SRI_LANKAN_DISTRICTS?.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.emoji} {d.label} {d.sinhala ? `(${d.sinhala})` : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-hover:text-slate-600 transition-colors">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                </svg>
+              </div>
+            </div>
+            {errors.district && (
+              <p className="text-xs font-medium text-rose-500 flex items-center gap-1 animate-fadeIn">
+                <AlertCircle className="w-3.5 h-3.5" /> {errors.district}
+              </p>
+            )}
+          </div>
+
+          {/* Dynamic City / Town Picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+              Town / Tourism Zone <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative group">
+              <select
+                id="city"
+                name="city"
+                value={city}
+                onChange={onInputChange}
+                disabled={!district}
+                className={`w-full rounded-xl border appearance-none bg-white pl-4 pr-10 py-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 hover:border-slate-300 transition-all duration-200 cursor-pointer disabled:bg-slate-50 disabled:cursor-not-allowed ${
+                  errors.city ? "border-rose-300 bg-rose-50/20" : "border-slate-200"
+                }`}
+                aria-invalid={!!errors.city}
+              >
+                <option value="">{district ? "Select Local Town / Area" : "Select district first"}</option>
+                {getCitiesByDistrict(district)?.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.sinhala ? `(${c.sinhala})` : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-hover:text-slate-600 transition-colors">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                </svg>
+              </div>
+            </div>
+            {errors.city && (
+              <p className="text-xs font-medium text-rose-500 flex items-center gap-1 animate-fadeIn">
+                <AlertCircle className="w-3.5 h-3.5" /> {errors.city}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="relative max-w-xl group">
-            <select
-              id="district"
-              name="district"
-              value={district}
-              onChange={onInputChange}
-              className={`w-full rounded-xl border appearance-none bg-white pl-4 pr-10 py-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 hover:border-slate-300 transition-all duration-200 ${
-                errors.district ? "border-rose-300 bg-rose-50/20" : "border-slate-200"
-              }`}
-              aria-invalid={!!errors.district}
-            >
-              <option value="">Select Local Operating District</option>
-              {SRI_LANKAN_DISTRICTS?.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.emoji} {d.label} {d.sinhala ? `(${d.sinhala})` : ""}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-hover:text-slate-600 transition-colors">
-              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-              </svg>
+        {/* Street Address / Landmark */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+            Street Address or Landmark (Optional)
+          </label>
+          <input
+            type="text"
+            name="streetAddress"
+            placeholder="e.g. Near Sacred Bo Tree, Nuwara Wewa Road, Mihintale Road"
+            value={streetAddress}
+            onChange={onInputChange}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 hover:border-slate-300 transition-all duration-200"
+          />
+        </div>
+
+        {/* Geographic Coordinates for Directions & Navigation */}
+        <div className="pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between pb-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <Navigation size={13} className="text-emerald-600" />
+              <span>Map Coordinates (Latitude &amp; Longitude)</span>
+            </label>
+            <span className="text-[11px] text-slate-400">Enables &ldquo;Get Directions&rdquo; for tourists</span>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500">Latitude</span>
+              <input
+                type="number"
+                step="any"
+                name="latitude"
+                placeholder={district === "Polonnaruwa" ? "7.9403" : "8.3114"}
+                value={latitude}
+                onChange={onInputChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 hover:border-slate-300 transition-all font-mono"
+              />
+              {errors.latitude && (
+                <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.latitude}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500">Longitude</span>
+              <input
+                type="number"
+                step="any"
+                name="longitude"
+                placeholder={district === "Polonnaruwa" ? "81.0188" : "80.4037"}
+                value={longitude}
+                onChange={onInputChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 hover:border-slate-300 transition-all font-mono"
+              />
+              {errors.longitude && (
+                <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.longitude}
+                </p>
+              )}
             </div>
           </div>
-          
-          {errors.district ? (
-            <p className="text-xs font-medium text-rose-500 flex items-center gap-1 animate-fadeIn">
-              <AlertCircle className="w-3.5 h-3.5" /> {errors.district}
-            </p>
-          ) : (
-            <div className="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50/50 rounded-xl p-3.5 max-w-xl border border-amber-100/50 shadow-sm leading-relaxed">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600 mt-0.5" />
-              <span>Operational validation is optimized for enterprises positioned within the <strong>Anuradhapura Heritage Hub</strong> and <strong>Polonnaruwa Ancient Kingdom</strong> sectors.</span>
-            </div>
-          )}
+          <p className="text-[11px] text-slate-400 mt-1.5">
+            Default coordinates are automatically assigned based on your chosen district if left blank.
+          </p>
         </div>
+      </div>
+
+      {/* SECTION 6: Business Capabilities & Stays Snapshot */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 md:p-6 shadow-sm space-y-5">
+        <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+          <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Service Capabilities</h3>
+            <p className="text-xs text-slate-400">Declare which hospitality services are active at your venue.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className={`p-4 rounded-xl border-2 flex items-start gap-3 cursor-pointer transition ${
+            hasFood ? "border-emerald-500 bg-emerald-50/30" : "border-slate-100 hover:border-slate-200"
+          }`}>
+            <input
+              type="checkbox"
+              name="hasFood"
+              checked={Boolean(hasFood)}
+              onChange={(e) => onInputChange({ target: { name: "hasFood", value: e.target.checked } })}
+              className="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <div>
+              <span className="text-xs font-extrabold text-slate-800 block">Food & Dining Experience</span>
+              <span className="text-[11px] text-slate-500 leading-snug block mt-0.5">Authentic meals, dining menus, beverages or snacks.</span>
+            </div>
+          </label>
+
+          <label className={`p-4 rounded-xl border-2 flex items-start gap-3 cursor-pointer transition ${
+            hasAccommodation ? "border-emerald-500 bg-emerald-50/30" : "border-slate-100 hover:border-slate-200"
+          }`}>
+            <input
+              type="checkbox"
+              name="hasAccommodation"
+              checked={Boolean(hasAccommodation)}
+              onChange={(e) => onInputChange({ target: { name: "hasAccommodation", value: e.target.checked } })}
+              className="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+            />
+            <div>
+              <span className="text-xs font-extrabold text-slate-800 block">Overnight Stay & Rooms</span>
+              <span className="text-[11px] text-slate-500 leading-snug block mt-0.5">Guest rooms, suites, villas, chalets or homestay units.</span>
+            </div>
+          </label>
+        </div>
+
+        {/* Accommodation Quick Snapshot (If Stay is enabled) */}
+        {hasAccommodation && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-4 animate-fadeIn">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">Stay Capacity Snapshot</h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Total Units/Rooms (Approx.)</label>
+                <input
+                  type="number"
+                  min="1"
+                  name="totalUnits"
+                  placeholder="e.g. 8"
+                  value={totalUnits}
+                  onChange={onInputChange}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold focus:border-emerald-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-600">Starting Price / Night (LKR)</label>
+                <input
+                  type="number"
+                  min="0"
+                  name="startingPricePerNight"
+                  placeholder="e.g. 6500"
+                  value={startingPricePerNight}
+                  onChange={onInputChange}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 italic">
+              Full individual room photos, amenities, and bed configurations can be customized in the Shop Owner Dashboard after verification.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* SECTION 6: Portfolio Dossier & Copywriting Deck */}

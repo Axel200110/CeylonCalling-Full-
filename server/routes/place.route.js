@@ -95,7 +95,7 @@ router.post("/", sessionAuth, handleFileUpload, async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const places = await Place.find()
-      .populate("user", "username email")
+      .populate("user", "name email")
       .populate("categories", "name");
       
     res.json({ 
@@ -114,7 +114,7 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const place = await Place.findById(req.params.id)
-      .populate("user", "username email")
+      .populate("user", "name email")
       .populate("categories", "name");
       
     if (!place) {
@@ -277,7 +277,7 @@ router.get("/:id/likes", async (req, res) => {
     const place = await Place.findById(req.params.id)
       .populate({
         path: "likes",
-        select: "username profilePicture",
+        select: "name avatar", // SiteUser has no "username"/"profilePicture" fields
         options: { limit: 20 } // Limit for performance
       })
       .select("likes likeCount");

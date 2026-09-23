@@ -44,6 +44,12 @@ const EditFoodModal = ({ food, onClose, onUpdate, onDelete }) => {
   // Form State initialized from food prop
   const [name, setName] = useState(food?.name || "");
   const [price, setPrice] = useState(food?.price || "");
+  const [discountPrice, setDiscountPrice] = useState(
+    food?.discountPrice !== undefined && food?.discountPrice > 0 ? food.discountPrice : ""
+  );
+  const [description, setDescription] = useState(food?.description || "");
+  const [availability, setAvailability] = useState(food?.availability || "available");
+  const [tag, setTag] = useState(food?.tag || "standard");
   const [categoryId, setCategoryId] = useState(
     food?.categoryId?.toString() || food?.category?._id?.toString() || ""
   );
@@ -181,6 +187,10 @@ const EditFoodModal = ({ food, onClose, onUpdate, onDelete }) => {
       const formData = new FormData();
       formData.append("name", name.trim());
       formData.append("price", price);
+      formData.append("discountPrice", discountPrice ? Number(discountPrice) : 0);
+      formData.append("description", description);
+      formData.append("availability", availability);
+      formData.append("tag", tag);
       formData.append("categoryId", categoryId);
 
       if (newImage) {
@@ -399,6 +409,78 @@ const EditFoodModal = ({ food, onClose, onUpdate, onDelete }) => {
                   className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/[0.08] text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner disabled:opacity-50"
                 />
               </div>
+            </div>
+
+            {/* Grid layout for Discount Price & Tag */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Discount Price */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><DollarSign className="w-3 h-3 text-amber-400" /> Offer Price (LKR)</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Optional</span>
+                </label>
+                <input
+                  type="number"
+                  value={discountPrice}
+                  onChange={(e) => setDiscountPrice(e.target.value)}
+                  placeholder="e.g. 990 (Leave empty if no offer)"
+                  min="0"
+                  disabled={submitting || deleting || !!successMessage}
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/[0.08] text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner disabled:opacity-50"
+                />
+              </div>
+
+              {/* Special Tag */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-400" /> Meal Highlight Tag
+                </label>
+                <select
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  disabled={submitting || deleting || !!successMessage}
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/[0.08] text-xs text-slate-100 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <option value="standard">Standard Menu Item</option>
+                  <option value="trending">🔥 Trending</option>
+                  <option value="new">✨ New Meal</option>
+                  <option value="chef_special">👨‍🍳 Chef Special</option>
+                  <option value="recommended">⭐ Recommended</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Availability */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Stock Availability Status
+              </label>
+              <select
+                value={availability}
+                onChange={(e) => setAvailability(e.target.value)}
+                disabled={submitting || deleting || !!successMessage}
+                className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/[0.08] text-xs text-slate-100 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <option value="available">🟢 Available for Orders</option>
+                <option value="sold_out">🔴 Sold Out Today</option>
+                <option value="temporarily_unavailable">🟡 Temporarily Unavailable</option>
+              </select>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Description & Preparation Notes</span>
+                <span className="text-[10px] text-slate-500 font-normal">Optional</span>
+              </label>
+              <textarea
+                rows="2"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ingredients, serving size, spice level, or special recipe details..."
+                disabled={submitting || deleting || !!successMessage}
+                className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/[0.08] text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner disabled:opacity-50 resize-none"
+              />
             </div>
 
             {/* Media Upload & Interactive Drag-and-Drop Dropzone */}

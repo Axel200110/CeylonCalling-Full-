@@ -18,8 +18,17 @@ const INITIAL_STATE = {
   phone: "",
   password: "",
   confirmPassword: "",
+  province: "North Central Province",
   district: "",
+  city: "",
+  streetAddress: "",
+  latitude: "",
+  longitude: "",
   establishmentType: "restaurant",
+  hasFood: true,
+  hasAccommodation: false,
+  totalUnits: "",
+  startingPricePerNight: "",
   categories: [],
   services: [],
   businessDescription: "",
@@ -45,13 +54,27 @@ export const usePartnerForm = () => {
   );
 
   const shouldShowServices = useMemo(
-    () => formData.establishmentType === "restaurant",
-    [formData.establishmentType]
+    () => formData.establishmentType === "restaurant" || formData.hasFood,
+    [formData.establishmentType, formData.hasFood]
   );
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      // If district changes, reset city and update coordinate defaults
+      if (name === "district") {
+        updated.city = "";
+        const isPol = String(value).toLowerCase().includes("polonnaruwa");
+        if (!prev.latitude || prev.latitude === "8.3114" || prev.latitude === "7.9403") {
+          updated.latitude = isPol ? "7.9403" : "8.3114";
+        }
+        if (!prev.longitude || prev.longitude === "80.4037" || prev.longitude === "81.0188") {
+          updated.longitude = isPol ? "81.0188" : "80.4037";
+        }
+      }
+      return updated;
+    });
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -63,9 +86,12 @@ export const usePartnerForm = () => {
   }, []);
 
   const handleEstablishmentChange = useCallback((type) => {
+    const isAcc = ["hotel", "villa", "guesthouse"].includes(type);
     setFormData(prev => ({
       ...prev,
       establishmentType: type,
+      hasAccommodation: isAcc,
+      hasFood: type === "restaurant" || isAcc,
       categories: [],
       services: []
     }));
@@ -139,10 +165,17 @@ export const usePartnerForm = () => {
       }
     });
 
-    // Append district label
+    // Ensure North Central regional fields are explicitly formatted
     const districtLabel = SRI_LANKAN_DISTRICTS
       .find(d => d.id === formData.district)?.label || formData.district || "Anuradhapura";
-    data.append("location", districtLabel);
+    data.set("district", districtLabel);
+    data.set("province", "North Central Province");
+    data.set("location", `${formData.city ? formData.city + ', ' : ''}${districtLabel}`);
+    
+    const isPol = districtLabel.toLowerCase().includes("polonnaruwa");
+    data.set("latitude", formData.latitude || (isPol ? "7.9403" : "8.3114"));
+    data.set("longitude", formData.longitude || (isPol ? "81.0188" : "80.4037"));
+
     if (formData.businessDescription) {
       data.append("details", formData.businessDescription);
     }

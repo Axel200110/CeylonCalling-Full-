@@ -61,7 +61,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:5000/api/shops/all");
+      const res = await axios.get("/api/shops/all");
       setShops(Array.isArray(res.data?.shops) ? res.data.shops : []);
     } catch (err) {
       console.error("Error fetching shops:", err);
@@ -105,6 +105,9 @@ export default function Home() {
           if (selectedType === "restaurant" && type !== "restaurant" && type !== "small_food_shop") {
             return false;
           }
+          if (selectedType === "stays" && type !== "hotel" && type !== "villa" && type !== "guesthouse") {
+            return false;
+          }
           if (selectedType === "hotel" && type !== "hotel") return false;
           if (selectedType === "villa" && type !== "villa") return false;
           if (selectedType === "guesthouse" && type !== "guesthouse") return false;
@@ -124,7 +127,7 @@ export default function Home() {
 
         // 3. District / Location filter
         if (selectedDistrict !== "all") {
-          const loc = (shop.location || "").toLowerCase();
+          const loc = (shop.location || shop.addressDetails?.district || "").toLowerCase();
           const target = selectedDistrict.toLowerCase();
           if (!loc.includes(target)) return false;
         }

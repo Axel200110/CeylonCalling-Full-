@@ -12,8 +12,11 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  Navigation,
 } from "lucide-react";
 import { resolveImageUrl, formatRating, formatLocation } from "../../utils/formatters";
+import { getDirectionsUrl, DIRECTIONS_UNAVAILABLE_MSG } from "../../utils/locationUtils";
+import { notify } from "../../utils/toast";
 import { useSiteUserAuthStore } from "../../store/siteUserAuthStore";
 
 const getTypeMeta = (shopType = "restaurant") => {
@@ -69,6 +72,16 @@ export default function RestaurantCard({ shop, index = 0 }) {
     navigate(`/restaurant/${shop._id}`);
   };
 
+  const handleDirections = (e) => {
+    e.stopPropagation();
+    const url = getDirectionsUrl(shop);
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      notify.error(DIRECTIONS_UNAVAILABLE_MSG);
+    }
+  };
+
   const handleLike = async (e) => {
     e.stopPropagation();
     if (!user) {
@@ -80,7 +93,7 @@ export default function RestaurantCard({ shop, index = 0 }) {
     setIsLiking(true);
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/shops/${shop._id}/like`,
+        `/api/shops/${shop._id}/like`,
         {},
         { withCredentials: true }
       );
@@ -94,6 +107,11 @@ export default function RestaurantCard({ shop, index = 0 }) {
       setIsLiking(false);
     }
   };
+
+  const isAccommodation = ["hotel", "villa", "guesthouse"].includes((shop.shopType || "").toLowerCase());
+  const locationDisplay = shop.addressDetails?.city
+    ? `${shop.addressDetails.city}, ${shop.addressDetails.district || "North Central"}`
+    : formatLocation(shop.location);
 
   return (
     <motion.div
@@ -109,7 +127,7 @@ export default function RestaurantCard({ shop, index = 0 }) {
       <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 shrink-0">
         <img
           src={imgUrl}
-          alt={shop.name || "Restaurant"}
+          alt={shop.name || "Venue"}
           onError={() => setImgUrl(resolveImageUrl("", shop.shopType))}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
@@ -141,7 +159,7 @@ export default function RestaurantCard({ shop, index = 0 }) {
         <div className="absolute bottom-3 left-3.5 right-3.5 flex items-center justify-between text-white text-xs">
           <div className="flex items-center gap-1 font-semibold text-slate-100 bg-slate-950/60 backdrop-blur-md px-2.5 py-1 rounded-lg">
             <MapPin size={12} className="text-emerald-400 shrink-0" />
-            <span className="truncate max-w-[150px]">{formatLocation(shop.location)}</span>
+            <span className="truncate max-w-[150px]">{locationDisplay}</span>
           </div>
           <div className="flex items-center gap-1 bg-white/90 text-slate-900 font-extrabold px-2 py-1 rounded-lg backdrop-blur-md shadow-xs">
             <Star size={12} className="fill-amber-400 text-amber-400" />
@@ -165,7 +183,7 @@ export default function RestaurantCard({ shop, index = 0 }) {
           </div>
 
           <p className="text-xs text-slate-500 leading-relaxed font-light line-clamp-2">
-            {shop.description || shop.businessDescription || "Discover an unforgettable dining and hospitality experience in the heart of Ceylon."}
+            {shop.description || shop.businessDescription || "Discover an authentic tourism experience in the North Central Province."}
           </p>
         </div>
 
@@ -173,12 +191,16 @@ export default function RestaurantCard({ shop, index = 0 }) {
         <div className="pt-3 border-t border-slate-100 space-y-2.5">
           {/* Price Range & Likes */}
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-slate-700">{shop.priceRange || "LKR 1,000–3,000"}</span>
+            <span className="font-bold text-slate-700">
+              {isAccommodation
+                ? (shop.priceRange ? (shop.priceRange.toLowerCase().includes("night") ? shop.priceRange : `${shop.priceRange} / night`) : "From LKR 4,500 / night")
+                : (shop.priceRange || "LKR 1,000–3,000")}
+            </span>
             <span className="text-[11px] text-slate-400 font-medium">{likeCount} likes</span>
           </div>
 
-          {/* Service Badges */}
-          {Array.isArray(shop.services) && shop.services.length > 0 ? (
+          {/* Service Badges or Quick Link */}
+          {Array.isArray(shop.services) && shop.services.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {shop.services.slice(0, 3).map((svc, i) => (
                 <span
@@ -190,12 +212,29 @@ export default function RestaurantCard({ shop, index = 0 }) {
                 </span>
               ))}
             </div>
-          ) : (
-            <div className="flex items-center justify-between text-[11px] text-emerald-600 font-semibold group-hover:underline">
-              <span>View Menu & Details</span>
-              <ArrowRight size={13} />
-            </div>
           )}
+
+          {/* Action Bar */}
+          <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-50">
+            <button
+              type="button"
+              onClick={handleDirections}
+              title="Get Directions on Google Maps"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-[11px] font-semibold transition"
+            >
+              <Navigation size={11} className="text-emerald-600" />
+              <span>Directions</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCardClick}
+              className="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:text-emerald-700 font-semibold group-hover:underline"
+            >
+              <span>{isAccommodation ? "View Stay" : "View Venue"}</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>

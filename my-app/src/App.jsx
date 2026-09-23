@@ -1,60 +1,64 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "react-hot-toast";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { useAdminStore } from "./admin/store/adminStore";
 import { useAuthStore } from "./shopowner/store/authStore";
 import { useSiteUserAuthStore } from "./store/siteUserAuthStore";
 
-// Common Components
+// Common Landing Components (Rendered eagerly on initial landing)
 import About from "./components/About";
 import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import Join from "./components/Join";
-
-// Shopowner Pages
-import ShopOwnerForgotPasswordPage from "./shopowner/pages/ForgotPasswordPage";
-import ShopOwnerLoginPage from "./shopowner/pages/LoginPage";
-import ShopOwnerMessagesPage from "./shopowner/pages/Messages";
-import MyShop from "./shopowner/pages/MyShop";
-import ShopOwnerResetPasswordPage from "./shopowner/pages/ResetPasswordPage";
-import Settings from "./shopowner/pages/Settings";
-import ShopCreate from "./shopowner/pages/ShopCreateAcc";
-import ShopForm from "./shopowner/pages/ShopLogUi";
-import { default as DashboardPage } from "./shopowner/pages/ShopOwner";
-
-// Site User & Customer Pages
-import Home from "./pages/Home";
-import SiteUserLoginPage from "./pages/LoginPage";
-import PlacesPage from "./pages/MyPlace";
-import PartnerWithUs from "./pages/PartnerWithUs/PartnerWithUs";
-import PlaceDetails from "./pages/PlaceDetails";
-import UserProfile from "./pages/ProfileUser";
-import SiteUserSignUpPage from "./pages/SignUpPage";
-import SiteUserEmailVerificationPage from "./pages/UserEmailVerificationPage";
-import SiteUserForgotPasswordPage from "./pages/UserForgotPasswordPage";
-import UserLogUi from "./pages/UserLogUi";
-import SiteUserResetPasswordPage from "./pages/UserResetPasswordPage";
-import UserSettings from "./pages/UserSettings";
-import Shops from "./pages/Shops";
-import ShopDetails from "./pages/ShopDetails";
-import RestaurantMenuPage from "./pages/RestaurantMenuPage";
-import Foods from "./pages/Foods";
-import FoodDetails from "./pages/FoodDetails";
-import CartPage from "./pages/CartPage";
-import CheckoutPage from "./pages/CheckoutPage";
-
-// Components
+import RouteLoadingFallback from "./components/common/RouteLoadingFallback";
 import LoadingSpinner from "./shopowner/components/LoadingSpinner";
 
-// Admin Pages
-import AdminLayout from "./admin/pages/AdminLayout";
-import AdminLoginPage from "./admin/pages/AdminLoginPage";
-import AdminMessages from "./admin/pages/AdminMessages";
-import AdminSettings from "./admin/pages/AdminSettings";
-import AdminDashboard from "./admin/pages/Dashboard";
-import AdminListings from "./admin/pages/ListingsManagement";
-import AdminShops from "./admin/pages/ShopsManagement";
-import AdminUsers from "./admin/pages/UsersManagement";
+// Lazy-loaded Shopowner Pages
+const AnnouncementsPage = lazy(() => import("./shopowner/pages/AnnouncementsPage"));
+const FeedbackPage = lazy(() => import("./shopowner/pages/FeedbackPage"));
+const ShopOwnerForgotPasswordPage = lazy(() => import("./shopowner/pages/ForgotPasswordPage"));
+const ShopOwnerLoginPage = lazy(() => import("./shopowner/pages/LoginPage"));
+const ShopOwnerMessagesPage = lazy(() => import("./shopowner/pages/Messages"));
+const MyShop = lazy(() => import("./shopowner/pages/MyShop"));
+const OrdersPage = lazy(() => import("./shopowner/pages/OrdersPage"));
+const PromotionsPage = lazy(() => import("./shopowner/pages/PromotionsPage"));
+const ShopOwnerResetPasswordPage = lazy(() => import("./shopowner/pages/ResetPasswordPage"));
+const RoomsPage = lazy(() => import("./shopowner/pages/RoomsPage"));
+const Settings = lazy(() => import("./shopowner/pages/Settings"));
+const DashboardPage = lazy(() => import("./shopowner/pages/ShopOwner"));
+
+// Lazy-loaded Site User & Customer Pages
+const CartPage = lazy(() => import("./pages/CartPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const DiscoverPage = lazy(() => import("./pages/DiscoverPage"));
+const FoodDetails = lazy(() => import("./pages/FoodDetails"));
+const Foods = lazy(() => import("./pages/Foods"));
+const SiteUserLoginPage = lazy(() => import("./pages/LoginPage"));
+const PlacesPage = lazy(() => import("./pages/MyPlace"));
+const PartnerWithUs = lazy(() => import("./pages/PartnerWithUs/PartnerWithUs"));
+const PlaceDetails = lazy(() => import("./pages/PlaceDetails"));
+const UserProfile = lazy(() => import("./pages/ProfileUser"));
+const RestaurantMenuPage = lazy(() => import("./pages/RestaurantMenuPage"));
+const ShopDetails = lazy(() => import("./pages/ShopDetails"));
+const Shops = lazy(() => import("./pages/Shops"));
+const SiteUserSignUpPage = lazy(() => import("./pages/SignUpPage"));
+const SiteUserEmailVerificationPage = lazy(() => import("./pages/UserEmailVerificationPage"));
+const SiteUserForgotPasswordPage = lazy(() => import("./pages/UserForgotPasswordPage"));
+const SiteUserResetPasswordPage = lazy(() => import("./pages/UserResetPasswordPage"));
+const UserSettings = lazy(() => import("./pages/UserSettings"));
+
+// Lazy-loaded Admin Pages
+const AdminLayout = lazy(() => import("./admin/pages/AdminLayout"));
+const AdminLoginPage = lazy(() => import("./admin/pages/AdminLoginPage"));
+const AdminMessages = lazy(() => import("./admin/pages/AdminMessages"));
+const AdminSettings = lazy(() => import("./admin/pages/AdminSettings"));
+const AuditLogsPage = lazy(() => import("./admin/pages/AuditLogsPage"));
+const AdminDashboard = lazy(() => import("./admin/pages/Dashboard"));
+const AdminListings = lazy(() => import("./admin/pages/ListingsManagement"));
+const ReviewModeration = lazy(() => import("./admin/pages/ReviewModeration"));
+const AdminShops = lazy(() => import("./admin/pages/ShopsManagement"));
+const AdminUsers = lazy(() => import("./admin/pages/UsersManagement"));
 
 // ----------- Route Protection Logic ----------- //
 
@@ -81,24 +85,47 @@ const ShopOwnerRedirectAuthenticatedUser = ({ children }) => {
 // Site user protected route
 const SiteUserProtectedRoute = ({ children }) => {
   const isAuthenticated = useSiteUserAuthStore((state) => state.isAuthenticated);
-  const user = useSiteUserAuthStore((state) => state.user);
 
   if (!isAuthenticated) {
     return <Navigate to="/user/login" replace />;
   }
-  if (!user?.isVerified) {
-    return <Navigate to="/user/verify-email" replace />;
+  return children;
+};
+
+// Site user redirect if authenticated
+const SiteUserRedirectAuthenticatedUser = ({ children }) => {
+  const isAuthenticated = useSiteUserAuthStore((state) => state.isAuthenticated);
+
+  if (isAuthenticated) {
+    return <Navigate to="/discover" replace />;
   }
   return children;
 };
 
-// Site user redirect if auth
-const SiteUserRedirectAuthenticatedUser = ({ children }) => {
-  const isAuthenticated = useSiteUserAuthStore((state) => state.isAuthenticated);
-  const user = useSiteUserAuthStore((state) => state.user);
+// Admin protected route
+const AdminProtectedRoute = ({ children }) => {
+  const isAuthenticated = useAdminStore((state) => state.isAuthenticated);
+  const isAdminCheckingAuth = useAdminStore((state) => state.isAdminCheckingAuth);
 
-  if (isAuthenticated && user?.isVerified) {
-    return <Navigate to="/discover" replace />;
+  useEffect(() => {
+    useAdminStore.getState().checkAuth();
+  }, []);
+
+  if (isAdminCheckingAuth) {
+    return <LoadingSpinner />;
+  }
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+};
+
+// Admin redirect if auth
+const AdminRedirectAuthenticatedUser = ({ children }) => {
+  const isAuthenticated = useAdminStore((state) => state.isAuthenticated);
+
+  if (isAuthenticated) {
+    return <Navigate to="/admin" replace />;
   }
   return children;
 };
@@ -124,8 +151,22 @@ function App() {
 
   return (
     <Router>
-      <Toaster />
-      <Routes>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3500,
+          style: {
+            background: "#0f172a",
+            color: "#f8fafc",
+            fontSize: "13px",
+            borderRadius: "12px",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+          },
+        }}
+      />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
         {/* Public Landing Website */}
         <Route
           path="/"
@@ -146,8 +187,8 @@ function App() {
 
         {/* ----------- CUSTOMER DISCOVERY & FOOD EXPERIENCE ----------- */}
         {/* Discovery Hub */}
-        <Route path="/discover" element={<Home />} />
-        <Route path="/user/dashboard" element={<Home />} />
+        <Route path="/discover" element={<DiscoverPage />} />
+        <Route path="/user/dashboard" element={<DiscoverPage />} />
 
         {/* Restaurant & Shop Details */}
         <Route path="/shops" element={<Shops />} />
@@ -165,14 +206,8 @@ function App() {
 
         {/* Cart & Checkout */}
         <Route path="/cart" element={<CartPage />} />
-        <Route
-          path="/checkout"
-          element={
-            <SiteUserProtectedRoute>
-              <CheckoutPage />
-            </SiteUserProtectedRoute>
-          }
-        />
+        {/* Guest checkout is allowed — no login required */}
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route
           path="/profile"
           element={
@@ -185,7 +220,7 @@ function App() {
 
         {/* ----------- SHOPOWNER ROUTES ----------- */}
         <Route path="/shop" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/shopform" element={<ShopForm />} />
+        <Route path="/shopform" element={<Navigate to="/partner-with-us" replace />} />
 
         {/* Shopowner Auth */}
         <Route path="/signup" element={<Navigate to="/login" replace />} />
@@ -197,6 +232,7 @@ function App() {
             </ShopOwnerRedirectAuthenticatedUser>
           }
         />
+        <Route path="/login-shop" element={<Navigate to="/login" replace />} />
         <Route path="/verify-email" element={<Navigate to="/login" replace />} />
         <Route
           path="/forgot-password"
@@ -249,16 +285,48 @@ function App() {
           }
         />
         <Route
-          path="/shopcreate"
+          path="/dashboard/orders"
           element={
             <ShopOwnerProtectedRoute>
-              <ShopCreate />
+              <OrdersPage />
             </ShopOwnerProtectedRoute>
           }
         />
+        <Route
+          path="/dashboard/rooms"
+          element={
+            <ShopOwnerProtectedRoute>
+              <RoomsPage />
+            </ShopOwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/promotions"
+          element={
+            <ShopOwnerProtectedRoute>
+              <PromotionsPage />
+            </ShopOwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/announcements"
+          element={
+            <ShopOwnerProtectedRoute>
+              <AnnouncementsPage />
+            </ShopOwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/reviews"
+          element={
+            <ShopOwnerProtectedRoute>
+              <FeedbackPage />
+            </ShopOwnerProtectedRoute>
+          }
+        />
+        <Route path="/shopcreate" element={<Navigate to="/dashboard" replace />} />
 
         {/* ----------- SITE USER AUTH & PROTECTED ----------- */}
-        <Route path="/userlogui" element={<UserLogUi />} />
         <Route
           path="/user/signup"
           element={
@@ -275,6 +343,7 @@ function App() {
             </SiteUserRedirectAuthenticatedUser>
           }
         />
+        <Route path="/user/verify-email" element={<SiteUserEmailVerificationPage />} />
         <Route path="/verify-email1" element={<SiteUserEmailVerificationPage />} />
         <Route
           path="/user/forgot-password"
@@ -327,20 +396,37 @@ function App() {
         />
 
         {/* ----------- ADMIN ROUTES ----------- */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin/login"
+          element={
+            <AdminRedirectAuthenticatedUser>
+              <AdminLoginPage />
+            </AdminRedirectAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
           <Route index element={<AdminDashboard />} />
           <Route path="shops" element={<AdminShops />} />
+          <Route path="reviews" element={<ReviewModeration />} />
           <Route path="messages" element={<AdminMessages />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="listings" element={<AdminListings />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </Suspense>
+  </Router>
   );
 }
 

@@ -1,6 +1,6 @@
 import express from "express";
-import Category from "../models/Category.js";
-import Shop from "../models/Shop.js";
+import Category from "../models/category.model.js";
+import Shop from "../models/shop.model.js";
 import { sessionAuth } from "../middlewares/sessionAuth.js";
 
 const router = express.Router();

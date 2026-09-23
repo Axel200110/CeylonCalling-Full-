@@ -6,9 +6,9 @@ import {
   UtensilsCrossed
 } from "lucide-react";
 
-import RestaurantInterior from "../assets/About.jpg";
+import RestaurantInterior from "../assets/about_opt.jpg";
 import DeliciousFood from "../assets/Mission.jpg";
-import DiningExperience from "../assets/vision.jpg";
+import DiningExperience from "../assets/vision_opt.jpg";
 
 // --- Framer Motion Animation Variants ---
 const staggerContainer = {
@@ -153,6 +153,7 @@ export default function About() {
                 src={RestaurantInterior} 
                 alt="Premium boutique restaurant setting" 
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
             <div className="col-span-5 grid grid-rows-2 gap-3 sm:gap-4 h-full">
@@ -161,6 +162,7 @@ export default function About() {
                   src={DeliciousFood} 
                   alt="Curated local specialty dish presentation" 
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
               <div className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm sm:shadow-md border border-white">
@@ -168,6 +170,7 @@ export default function About() {
                   src={DiningExperience} 
                   alt="Scenic outdoor terrace location" 
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </div>
             </div>

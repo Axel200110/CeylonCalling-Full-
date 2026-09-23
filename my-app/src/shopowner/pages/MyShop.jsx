@@ -23,7 +23,7 @@ import { useLocation } from "react-router-dom";
 import Navigation from "../../shopowner/components/SideNavbar";
 import { useAuthStore } from "../../shopowner/store/authStore";
 import AddCategory from "../components/AddCategory";
-import AddFoodItem from "../components/AddFoodIte";
+import AddFoodItem from "../components/AddFoodItem";
 import EditFood from "../components/EditFood";
 import ShopEditModal from "../components/ShopEdit";
 import ShopStats from "../components/ShopState";
@@ -116,6 +116,23 @@ const MyShop = () => {
       prev.map((f) => (f._id === updated._id ? { ...updated, category: updatedCategory } : f))
     );
     setEditingFood(null);
+  };
+
+  const handleQuickAvailability = async (id, newAvailability) => {
+    try {
+      const res = await fetch(`/api/food/${id}/availability`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ availability: newAvailability }),
+      });
+      if (!res.ok) throw new Error();
+      setFoods((prev) =>
+        prev.map((f) => (f._id === id ? { ...f, availability: newAvailability } : f))
+      );
+    } catch {
+      alert("Failed to update availability status");
+    }
   };
 
   const handleDeleteFood = async (id) => {
@@ -471,30 +488,47 @@ const MyShop = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-90 group-hover:opacity-75 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-              {/* Floating Category Badge */}
-              {food.category?.name && (
-                <div className="absolute top-3.5 left-3.5 z-10">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold uppercase bg-black/40 text-emerald-300 border border-emerald-500/20 backdrop-blur-md">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              {/* Floating Badges */}
+              <div className="absolute top-3.5 left-3.5 z-10 flex flex-wrap gap-1">
+                {food.category?.name && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-black/50 text-emerald-300 border border-emerald-500/20 backdrop-blur-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     {food.category.name}
                   </span>
-                </div>
-              )}
+                )}
+                {food.tag && food.tag !== "standard" && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md">
+                    ★ {food.tag.replace("_", " ")}
+                  </span>
+                )}
+              </div>
 
-              {/* Availability / Stock Indicator Badge */}
+              {/* Availability Status Badge */}
               <div className="absolute top-3.5 right-3.5 z-10">
-                <span className="px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-700/10 text-emerald-300 border border-emerald-700/10 backdrop-blur-sm">
-                  In Stock
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${
+                    food.availability === "sold_out"
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                      : food.availability === "temporarily_unavailable"
+                      ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                  }`}
+                >
+                  {food.availability === "sold_out"
+                    ? "Sold Out"
+                    : food.availability === "temporarily_unavailable"
+                    ? "Unavailable"
+                    : "In Stock"}
                 </span>
               </div>
             </div>
 
             {/* Main Content Body */}
-            <div className="relative p-6 flex-1 flex flex-col justify-between -mt-6 z-10">
+            <div className="relative p-5 flex-1 flex flex-col justify-between -mt-6 z-10">
               <div className="space-y-2">
-                {/* Title & Price Row */}
+                {/* Title */}
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-white tracking-tight truncate capitalize group-hover:text-emerald-300 transition-colors duration-300">
+                  <h3 className="text-lg font-bold text-white tracking-tight truncate capitalize group-hover:text-emerald-300 transition-colors duration-300">
                     {food.name}
                   </h3>
                 </div>
@@ -506,41 +540,86 @@ const MyShop = () => {
                   </p>
                 )}
 
-                {/* Price Display with Glow Effect */}
-                <div className="pt-3">
-                  <span className="text-2xl font-extrabold tracking-tight text-emerald-400 drop-shadow-[0_6px_20px_rgba(16,185,129,0.12)]">
-                    LKR {parseFloat(food.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+                {/* Price Display */}
+                <div className="pt-2 flex items-baseline gap-2">
+                  {food.discountPrice && food.discountPrice > 0 ? (
+                    <>
+                      <span className="text-2xl font-black tracking-tight text-emerald-400 drop-shadow-[0_6px_20px_rgba(16,185,129,0.12)]">
+                        LKR {parseFloat(food.discountPrice).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-xs line-through text-slate-500 font-semibold">
+                        LKR {parseFloat(food.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-black tracking-tight text-emerald-400 drop-shadow-[0_6px_20px_rgba(16,185,129,0.12)]">
+                      LKR {parseFloat(food.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Footer Actions */}
-              <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-medium text-slate-400">ID: </span>
-                  <span className="text-[11px] font-semibold text-slate-500">#{food._id ? food._id.slice(-6).toUpperCase() : "N/A"}</span>
+              <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-2.5">
+                {/* 1-Click Availability Switch */}
+                <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+                  <span className="text-[9px] font-bold uppercase text-slate-400 px-1.5">Stock:</span>
+                  <button
+                    onClick={() => handleQuickAvailability(food._id, "available")}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition ${
+                      (!food.availability || food.availability === "available")
+                        ? "bg-emerald-500 text-neutral-950 shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Available
+                  </button>
+                  <button
+                    onClick={() => handleQuickAvailability(food._id, "sold_out")}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition ${
+                      food.availability === "sold_out"
+                        ? "bg-rose-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Sold Out
+                  </button>
+                  <button
+                    onClick={() => handleQuickAvailability(food._id, "temporarily_unavailable")}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition ${
+                      food.availability === "temporarily_unavailable"
+                        ? "bg-amber-500 text-neutral-950 shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Temp
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => setEditingFood(food)}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-800/60 text-emerald-300 border border-emerald-500/10 text-xs font-semibold hover:bg-emerald-500/10 transition"
-                    title="Edit Item"
-                  >
-                    <FaEdit className="text-xs" />
-                    <span>Edit</span>
-                  </motion.button>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-500">#{food._id ? food._id.slice(-6).toUpperCase() : "N/A"}</span>
 
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => handleDeleteFood(food._id)}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-800/40 text-rose-300 border border-rose-500/10 text-xs font-semibold hover:bg-rose-500/10 transition"
-                    title="Delete Item"
-                  >
-                    <FaTrashAlt className="text-xs" />
-                    <span>Delete</span>
-                  </motion.button>
+                  <div className="flex items-center gap-1.5">
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setEditingFood(food)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/20 text-xs font-semibold hover:bg-emerald-500/20 transition"
+                      title="Edit Item"
+                    >
+                      <FaEdit className="text-xs" />
+                      <span>Edit</span>
+                    </motion.button>
+
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => handleDeleteFood(food._id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/50 text-rose-300 border border-rose-500/20 text-xs font-semibold hover:bg-rose-500/20 transition"
+                      title="Delete Item"
+                    >
+                      <FaTrashAlt className="text-xs" />
+                      <span>Delete</span>
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -14,7 +14,6 @@ import {
   FaTrash,
   FaUser
 } from "react-icons/fa";
-import { toast } from "react-toastify";
 
 // Helper for dynamic user avatar initial colors
 function getGradientByName(name = "") {

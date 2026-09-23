@@ -35,10 +35,7 @@ export default function CartPage() {
   const totalItems = getTotalItems();
 
   const handleCheckout = () => {
-    if (!isAuthenticated) {
-      navigate("/user/login", { state: { returnTo: "/checkout" } });
-      return;
-    }
+    // Guest checkout is allowed — no login required to proceed.
     navigate("/checkout");
   };
 

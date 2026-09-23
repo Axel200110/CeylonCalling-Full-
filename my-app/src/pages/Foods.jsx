@@ -43,7 +43,7 @@ export default function Foods() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:5000/api/food/all");
+      const res = await axios.get("/api/food/all");
       setFoods(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Error fetching foods:", err);

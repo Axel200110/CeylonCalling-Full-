@@ -14,16 +14,27 @@ import {
   ShieldAlert,
   ShieldCheck,
   Store,
-  Tag,
   TrendingUp,
   Utensils,
   Wallet,
-  XCircle
+  XCircle,
+  ShoppingBag,
+  Bed,
+  MessageCircle,
+  Bell,
+  Star,
+  RefreshCw,
+  Power,
+  PackageCheck,
+  ChefHat,
+  Tag,
+  Navigation,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import SideNavbar from "../components/SideNavbar";
+import ShopEditModal from "../components/ShopEdit";
 import { useAuthStore } from "../store/authStore";
 
 // ─── Ambient Glow Background Layer ──────────────────────────────────────────
@@ -253,6 +264,78 @@ const PendingScreen = ({ shop, onLogout }) => (
   </div>
 );
 
+// ─── Changes Requested Screen ────────────────────────────────────────────────
+const ChangesRequestedScreen = ({ shop, onLogout, onRefresh }) => (
+  <div className="relative min-h-screen bg-neutral-950 flex items-center justify-center px-4 py-16 text-neutral-200 overflow-hidden">
+    <AmbientBackground />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="relative z-10 w-full max-w-lg rounded-3xl border border-amber-500/30 bg-neutral-900/70 backdrop-blur-2xl p-8 shadow-2xl text-center space-y-6"
+    >
+      <div className="w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/30 shadow-lg shadow-amber-500/10 mx-auto">
+        <AlertCircle className="w-10 h-10 text-amber-400 animate-pulse" />
+      </div>
+
+      <div className="space-y-2">
+        <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          Action Required by Merchant
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight pt-2">
+          Application Revisions Requested
+        </h1>
+        <p className="text-xs text-neutral-400 max-w-sm mx-auto leading-relaxed">
+          The Ceylon Calling regional verification team has reviewed your application for{" "}
+          <strong className="text-white capitalize">"{shop?.name}"</strong> and requested updates before activation.
+        </p>
+      </div>
+
+      {/* Admin Notes Box */}
+      <div className="text-left rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-3">
+        <div>
+          <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider block">
+            Administrator Feedback:
+          </span>
+          <p className="text-xs text-neutral-200 mt-1 font-medium leading-relaxed">
+            {shop?.adminNotes?.feedbackForOwner || "Please update your listing photos or verification details."}
+          </p>
+        </div>
+
+        {shop?.adminNotes?.actionRequired && (
+          <div className="pt-2 border-t border-white/5">
+            <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block">
+              Required Next Step:
+            </span>
+            <p className="text-xs text-emerald-200/90 mt-0.5">
+              {shop.adminNotes.actionRequired}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="text-xs text-neutral-400 flex items-center justify-center gap-1.5">
+        <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+        <span>North Central Region Desk &bull; Anuradhapura & Polonnaruwa Operations</span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <button
+          onClick={onRefresh}
+          className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-neutral-950 text-xs font-bold hover:bg-amber-400 transition shadow-lg shadow-amber-500/20 cursor-pointer"
+        >
+          <RefreshCw className="w-4 h-4" /> Check Status
+        </button>
+        <button
+          onClick={onLogout}
+          className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-neutral-800/50 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" /> Sign Out
+        </button>
+      </div>
+    </motion.div>
+  </div>
+);
+
 // ─── Suspended Screen ────────────────────────────────────────────────────────
 const SuspendedScreen = ({ shop, onLogout }) => (
   <div className="relative min-h-screen bg-neutral-950 flex items-center justify-center px-4 py-16 text-neutral-200 overflow-hidden">
@@ -286,41 +369,44 @@ const SuspendedScreen = ({ shop, onLogout }) => (
 );
 
 // ─── Main Approved SaaS Dashboard ────────────────────────────────────────────
-const ApprovedDashboard = ({ shop, user, onLogout }) => {
-  const [foods, setFoods] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [likeCount, setLikeCount] = useState(0);
-  const [comments, setComments] = useState([]);
+const ApprovedDashboard = ({ shop: initialShop, user, onLogout }) => {
+  const { dashboardStats, fetchDashboardStats, updateOperationalSettings } = useAuthStore();
   const [loadingData, setLoadingData] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!shop?._id) return;
     const load = async () => {
       setLoadingData(true);
-      try {
-        const [foodRes, catRes, likesRes, commRes] = await Promise.all([
-          fetch("/api/food/my-shop", { credentials: "include" }),
-          fetch("/api/categories/my-shop", { credentials: "include" }),
-          fetch(`/api/shops/${shop._id}/likes/count`, { credentials: "include" }),
-          fetch(`/api/comments/shop/${shop._id}`, { credentials: "include" }),
-        ]);
-        setFoods(await foodRes.json());
-        setCategories(await catRes.json());
-        const likesData = await likesRes.json();
-        if (likesData.success) setLikeCount(likesData.data.likeCount ?? 0);
-        const commData = await commRes.json();
-        setComments(Array.isArray(commData) ? commData : []);
-      } catch { /* Fail-soft */ }
+      await fetchDashboardStats();
       setLoadingData(false);
     };
     load();
-  }, [shop]);
+  }, [fetchDashboardStats]);
 
-  const viewsData = [18, 24, 38, 45, 32, 52, 68];
-  const likesData = [2, 4, 3, 7, 5, likeCount > 0 ? likeCount : 6, likeCount > 0 ? likeCount + 1 : 8];
-  const ordersData = [foods.length, foods.length + 1, foods.length, foods.length + 2, foods.length + 1, foods.length + 3, foods.length + 2];
-  const totalValue = foods.reduce((s, f) => s + (parseFloat(f.price) || 0), 0);
+  const shop = dashboardStats?.shop || initialShop;
+  const foodStats = dashboardStats?.food || { total: 0, available: 0, soldOut: 0, categoriesCount: 0 };
+  const orderStats = dashboardStats?.orders || { total: 0, pending: 0, preparing: 0, completed: 0, revenue: 0 };
+  const reviewStats = dashboardStats?.reviews || { total: 0, avgRating: 5.0, unrepliedCount: 0 };
+  const promoStats = dashboardStats?.promotions || { active: 0 };
+  const annStats = dashboardStats?.announcements || { active: 0 };
+  const roomStats = dashboardStats?.accommodation;
+  const recentOrders = dashboardStats?.recentOrders || [];
+  const recentReviews = dashboardStats?.recentReviews || [];
+
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setUpdatingStatus(true);
+      await updateOperationalSettings({ operationalStatus: newStatus });
+      await fetchDashboardStats();
+      toast.success(`Business status updated to: ${newStatus.toUpperCase().replace("_", " ")}`);
+    } catch {
+      toast.error("Failed to update business operational status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const getShopImage = (photo) => {
     if (!photo) return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80";
@@ -343,7 +429,11 @@ const ApprovedDashboard = ({ shop, user, onLogout }) => {
     });
   };
 
-  if (loadingData) {
+  const isAccommodation =
+    shop?.capabilities?.hasAccommodation ||
+    ["hotel", "villa", "guesthouse"].includes(shop?.shopType?.toLowerCase());
+
+  if (loadingData && !dashboardStats) {
     return (
       <div className="flex min-h-screen bg-neutral-950">
         <SideNavbar />
@@ -360,6 +450,8 @@ const ApprovedDashboard = ({ shop, user, onLogout }) => {
     );
   }
 
+  const currentOpStatus = shop?.operationalStatus || "open";
+
   return (
     <div className="relative flex min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-emerald-500 selection:text-neutral-950">
       <AmbientBackground />
@@ -367,21 +459,77 @@ const ApprovedDashboard = ({ shop, user, onLogout }) => {
 
       <main className="relative z-10 flex-1 px-4 sm:px-8 py-8 overflow-x-hidden max-w-7xl mx-auto w-full space-y-8">
         
-        {/* ── HEADER BAR ── */}
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/5 pb-6">
+        {/* ── TOP ACTION & STATUS BAR ── */}
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/5 pb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
               <span className="text-neutral-500 font-semibold">{getGreeting()},</span> {user?.name || "Merchant"}
             </h1>
-            <p className="text-xs text-neutral-400 font-medium mt-1">
-              Active Store: <span className="text-emerald-400 font-bold capitalize">{shop.name}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300 bg-neutral-900/60 border border-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md">
-              <Calendar className="w-4 h-4 text-emerald-400" />
-              <span>{getFormattedDate()}</span>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span className="text-xs text-neutral-400 font-medium">Active Venue:</span>
+              <strong className="text-emerald-400 capitalize text-xs">{shop?.name}</strong>
+              <span className="text-neutral-600">•</span>
+              <span className="capitalize text-xs text-neutral-300">{shop?.shopType?.replace("_", " ")}</span>
+              <span className="text-neutral-600">•</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold">
+                <MapPin className="w-3 h-3" />
+                {shop?.addressDetails?.district || (shop?.location?.toLowerCase().includes("polonnaruwa") ? "Polonnaruwa" : "Anuradhapura")}
+                {shop?.addressDetails?.city ? ` &bull; ${shop.addressDetails.city}` : ''}
+              </span>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Operational Status Switcher */}
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-neutral-900/80 border border-white/10 backdrop-blur-md">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 px-2.5">
+                Status:
+              </span>
+              <button
+                onClick={() => handleStatusChange("open")}
+                disabled={updatingStatus}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  currentOpStatus === "open"
+                    ? "bg-emerald-500 text-neutral-950 shadow-md shadow-emerald-500/20"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${currentOpStatus === "open" ? "bg-neutral-950 animate-pulse" : "bg-emerald-500"}`} />
+                Open
+              </button>
+              <button
+                onClick={() => handleStatusChange("temporarily_closed")}
+                disabled={updatingStatus}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  currentOpStatus === "temporarily_closed"
+                    ? "bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/20"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${currentOpStatus === "temporarily_closed" ? "bg-neutral-950" : "bg-amber-500"}`} />
+                Busy
+              </button>
+              <button
+                onClick={() => handleStatusChange("closed")}
+                disabled={updatingStatus}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  currentOpStatus === "closed"
+                    ? "bg-rose-500 text-white shadow-md shadow-rose-500/20"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${currentOpStatus === "closed" ? "bg-white" : "bg-rose-500"}`} />
+                Closed
+              </button>
+            </div>
+
+            <button
+              onClick={() => fetchDashboardStats()}
+              className="p-2.5 rounded-xl border border-white/10 bg-neutral-900/60 hover:bg-neutral-900 text-neutral-400 hover:text-white transition"
+              title="Refresh Stats"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingData ? "animate-spin text-emerald-400" : ""}`} />
+            </button>
           </div>
         </header>
 
@@ -389,19 +537,19 @@ const ApprovedDashboard = ({ shop, user, onLogout }) => {
         <section className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-900/40 backdrop-blur-xl">
           <div className="absolute inset-0">
             <img
-              src={getShopImage(shop.photo)}
-              alt={shop.name}
+              src={getShopImage(shop?.photo)}
+              alt={shop?.name}
               className="w-full h-full object-cover opacity-20 filter blur-sm scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/85 to-transparent" />
           </div>
 
           <div className="relative z-10 p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               <div className="relative shrink-0">
                 <img
-                  src={getShopImage(shop.photo)}
-                  alt={shop.name}
+                  src={getShopImage(shop?.photo)}
+                  alt={shop?.name}
                   className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border border-white/20 shadow-2xl"
                 />
                 <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-neutral-950 rounded-full flex items-center justify-center shadow-lg">
@@ -412,104 +560,401 @@ const ApprovedDashboard = ({ shop, user, onLogout }) => {
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                  Verified Partner
+                  Verified Ceylon Calling Partner
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight capitalize">{shop.name}</h2>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight capitalize">{shop?.name}</h2>
                 <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400 pt-1">
-                  {shop.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400" />{shop.location}</span>}
-                  {shop.contact && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400" />{shop.contact}</span>}
-                  {shop.shopType && <span className="flex items-center gap-1.5"><Store className="w-3.5 h-3.5 text-emerald-400" />{shop.shopType.replace("_", " ")}</span>}
+                  {shop?.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-emerald-400" />{shop.location}</span>}
+                  {shop?.contact && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400" />{shop.contact}</span>}
+                  <span className="flex items-center gap-1.5">
+                    <Store className="w-3.5 h-3.5 text-emerald-400" />
+                    {shop?.shopType ? shop.shopType.replace("_", " ") : "Business"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 self-start md:self-auto">
+            <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+              <button
+                onClick={() => setShowLocationModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-neutral-800/60 text-xs font-semibold text-neutral-200 hover:bg-neutral-800 transition backdrop-blur-md"
+              >
+                <MapPin className="w-4 h-4 text-emerald-400" /> Location &amp; Map
+              </button>
               <button
                 onClick={() => navigate("/myshop")}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-neutral-800/60 text-xs font-semibold text-neutral-200 hover:bg-neutral-800 transition backdrop-blur-md"
               >
-                <Settings className="w-4 h-4" /> Manage Store
+                <Utensils className="w-4 h-4 text-emerald-400" /> Manage Dishes
               </button>
               <button
-                onClick={() => navigate("/myshop")}
+                onClick={() => navigate("/dashboard/orders")}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-neutral-950 text-xs font-bold hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20"
               >
-                <PlusCircle className="w-4 h-4" /> New Dish
+                <ShoppingBag className="w-4 h-4" /> Live Orders ({orderStats.pending})
               </button>
             </div>
           </div>
         </section>
 
-        {/* ── METRICS GRID ── */}
+        {/* ── BUSINESS LOCATION & MAP COORDINATES SECTION ── */}
+        {(() => {
+          const rawCoords = shop?.location?.coordinates?.coordinates;
+          const isPol = String(shop?.location?.district || shop?.addressDetails?.district || "").toLowerCase().includes("polonnaruwa");
+          const coordsLng = Array.isArray(rawCoords) && Number.isFinite(rawCoords[0]) ? Number(rawCoords[0]) : (Number(shop?.addressDetails?.coordinates?.lng) || (isPol ? 81.0188 : 80.4037));
+          const coordsLat = Array.isArray(rawCoords) && Number.isFinite(rawCoords[1]) ? Number(rawCoords[1]) : (Number(shop?.addressDetails?.coordinates?.lat) || (isPol ? 7.9403 : 8.3114));
+          const googleMapsLink = `https://www.google.com/maps/dir/?api=1&destination=${coordsLat},${coordsLng}`;
+
+          return (
+            <section className="rounded-3xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-6 shadow-2xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white tracking-tight">Verified Business Location &amp; Coordinates</h3>
+                    <p className="text-xs text-neutral-400">Powers customer navigation and the &ldquo;Get Directions&rdquo; action on Ceylon Calling.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <a
+                    href={googleMapsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/10 bg-neutral-800/50 hover:bg-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition"
+                  >
+                    <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>View Map</span>
+                  </a>
+
+                  <button
+                    onClick={() => setShowLocationModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-neutral-950 font-bold text-xs transition shadow-md shadow-emerald-600/20"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>Update Location</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Province</span>
+                  <span className="text-sm font-bold text-white block">North Central Province</span>
+                  <span className="text-[11px] text-emerald-400 font-medium">Verified Scope</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">District</span>
+                  <span className="text-sm font-bold text-white block">
+                    {shop?.location?.district || shop?.addressDetails?.district || (isPol ? "Polonnaruwa" : "Anuradhapura")}
+                  </span>
+                  <span className="text-[11px] text-neutral-400 font-medium">Target Tourism Zone</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">City / Town</span>
+                  <span className="text-sm font-bold text-white block truncate">
+                    {shop?.location?.city || shop?.addressDetails?.city || "Anuradhapura Town"}
+                  </span>
+                  <span className="text-[11px] text-neutral-400 font-medium truncate block">
+                    {shop?.location?.address || shop?.addressDetails?.streetAddress || "Street not set"}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">GeoJSON Coordinates</span>
+                  <span className="text-xs font-mono font-bold text-emerald-400 block truncate">
+                    {coordsLat.toFixed(4)}, {coordsLng.toFixed(4)}
+                  </span>
+                  <span className="text-[11px] text-neutral-400 font-medium">
+                    Exact navigation pin
+                  </span>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ── REAL DATABASE METRICS GRID ── */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <StatCard
-            icon={Utensils} label="Menu Catalog" value={foods.length}
-            sub="Active dishes published" color="emerald"
-            chart={ordersData} chartType="bar" trend="+5% growth"
-          />
-          <StatCard
-            icon={Tag} label="Food Types" value={categories.length}
-            sub="Configured classifications" color="blue"
-            chart={[3, 3, categories.length, categories.length + 1, categories.length]} chartType="bar" trend="Stable"
-          />
-          <StatCard
-            icon={Heart} label="Customer Likes" value={likeCount}
-            sub="Total user bookmarks" color="rose"
-            chart={likesData} chartType="spark" trend="+12% weekly"
-          />
-          <StatCard
-            icon={Wallet} label="Menu Value"
-            value={`LKR ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            sub="Aggregate catalog price" color="amber"
-            chart={viewsData} chartType="spark" trend="Total assets"
-          />
+          {/* 1. Food Catalog */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Menu Inventory</span>
+                <h3 className="text-2xl font-black text-white tracking-tight mt-1">{foodStats.total} Dishes</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Utensils className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-emerald-400 font-semibold">{foodStats.available} Available</span>
+              <span className="text-rose-400 font-semibold">{foodStats.soldOut} Sold Out</span>
+            </div>
+          </div>
+
+          {/* 2. Orders Queue */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Orders Queue</span>
+                <h3 className="text-2xl font-black text-white tracking-tight mt-1">{orderStats.total} Orders</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-amber-400 font-semibold">{orderStats.pending} Pending</span>
+              <span className="text-teal-400 font-semibold">{orderStats.preparing} In Prep</span>
+            </div>
+          </div>
+
+          {/* 3. Completed Sales / Revenue */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Completed Sales</span>
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1 truncate">
+                  LKR {orderStats.revenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <Wallet className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-neutral-400">
+              <span>{orderStats.completed} Fulfilled orders</span>
+              <span className="text-emerald-400 font-semibold">100% verified</span>
+            </div>
+          </div>
+
+          {/* 4. Hospitality Reviews */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Customer Rating</span>
+                <h3 className="text-2xl font-black text-white tracking-tight mt-1 flex items-center gap-1.5">
+                  <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                  {reviewStats.avgRating} <span className="text-xs text-neutral-500 font-normal">/ 5.0</span>
+                </h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <span className="text-neutral-400">{reviewStats.total} Total reviews</span>
+              {reviewStats.unrepliedCount > 0 ? (
+                <span className="text-rose-400 font-bold">{reviewStats.unrepliedCount} Unreplied</span>
+              ) : (
+                <span className="text-emerald-400 font-medium">All replied</span>
+              )}
+            </div>
+          </div>
         </section>
 
-        {/* ── CHARTS SECTION ── */}
+        {/* ── ACCOMMODATION METRICS (HOTELS, VILLAS, GUEST HOUSES) ── */}
+        {isAccommodation && roomStats && (
+          <section className="rounded-2xl border border-white/10 bg-gradient-to-r from-emerald-950/40 to-neutral-900/60 backdrop-blur-xl p-5 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Bed className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Accommodation & Lodging Overview</h4>
+                  <p className="text-xs text-neutral-400">Real-time room occupancy and guest reservation queue</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/dashboard/rooms")}
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 self-start sm:self-auto"
+              >
+                Manage Rooms & Bookings →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+              <div>
+                <span className="text-[10px] font-bold text-neutral-500 uppercase">Total Rooms</span>
+                <p className="text-xl font-bold text-white mt-0.5">{roomStats.totalRooms}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-neutral-500 uppercase">Available Units</span>
+                <p className="text-xl font-bold text-emerald-400 mt-0.5">{roomStats.availableRooms}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-neutral-500 uppercase">Total Reservations</span>
+                <p className="text-xl font-bold text-blue-400 mt-0.5">{roomStats.totalBookings}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-neutral-500 uppercase">Pending Review</span>
+                <p className="text-xl font-bold text-amber-400 mt-0.5">{roomStats.pendingBookings}</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── MARKETING STRIP ── */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            onClick={() => navigate("/dashboard/promotions")}
+            className="group cursor-pointer rounded-2xl border border-white/10 bg-neutral-900/40 hover:bg-neutral-900/70 backdrop-blur-xl p-4 flex items-center justify-between transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
+                <Tag className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">Promotions & Special Deals</h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">{promoStats.active} Active campaigns published</p>
+              </div>
+            </div>
+            <span className="text-xs text-neutral-400 group-hover:text-amber-400 transition font-bold">Manage →</span>
+          </div>
+
+          <div
+            onClick={() => navigate("/dashboard/announcements")}
+            className="group cursor-pointer rounded-2xl border border-white/10 bg-neutral-900/40 hover:bg-neutral-900/70 backdrop-blur-xl p-4 flex items-center justify-between transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center justify-center">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">Shop Announcements</h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">{annStats.active} Customer notices broadcasted</p>
+              </div>
+            </div>
+            <span className="text-xs text-neutral-400 group-hover:text-teal-400 transition font-bold">Manage →</span>
+          </div>
+        </section>
+
+        {/* ── LIVE ACTIVITY FEEDS ── */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+          {/* Recent Orders */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-blue-400" /> Catalog Page Impressions
+                  <ShoppingBag className="w-4 h-4 text-emerald-400" /> Recent Incoming Orders
                 </h3>
-                <p className="text-xs text-neutral-400 mt-0.5">Daily shop profile interactions</p>
+                <p className="text-xs text-neutral-400 mt-0.5">Live food orders received from customers</p>
               </div>
-              <span className="text-[10px] font-bold text-neutral-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                Weekly
-              </span>
+              <button
+                onClick={() => navigate("/dashboard/orders")}
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+              >
+                View All Queue →
+              </button>
             </div>
-            <MiniBarChart data={viewsData} color="#3b82f6" />
-            <div className="flex justify-between text-[10px] font-bold text-neutral-500 mt-3 px-1">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <span key={d}>{d}</span>
-              ))}
-            </div>
+
+            {recentOrders.length === 0 ? (
+              <div className="py-12 text-center text-xs text-neutral-500 font-medium">
+                No orders received yet today. Live orders will populate here immediately.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {recentOrders.map((o) => (
+                  <div
+                    key={o._id}
+                    className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <span className="font-mono text-[11px] font-bold text-emerald-400 block">{o.orderReference}</span>
+                      <span className="font-semibold text-white">{o.customerName}</span>
+                      <span className="text-neutral-500 text-[11px] block">{o.items?.length || 0} items • {o.serviceType?.replace("_", " ")}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-white block">LKR {o.totalAmount?.toLocaleString()}</span>
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          o.status === "completed"
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : o.status === "cancelled"
+                            ? "bg-rose-500/10 text-rose-400"
+                            : "bg-amber-500/10 text-amber-400"
+                        }`}
+                      >
+                        {o.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+          {/* Recent Reviews */}
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 backdrop-blur-xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-rose-400" /> Saved Store Growth
+                  <MessageCircle className="w-4 h-4 text-rose-400" /> Recent Customer Feedback
                 </h3>
-                <p className="text-xs text-neutral-400 mt-0.5">Bookmarks accumulated across apps</p>
+                <p className="text-xs text-neutral-400 mt-0.5">Ratings & traveler reviews on your profile</p>
               </div>
-              <span className="text-[10px] font-bold text-neutral-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                Trend
-              </span>
+              <button
+                onClick={() => navigate("/dashboard/reviews")}
+                className="text-xs font-semibold text-rose-400 hover:text-rose-300"
+              >
+                Feedback Hub →
+              </button>
             </div>
-            <SparkLine data={likesData} color="#f43f5e" />
-            <div className="flex justify-between text-[10px] font-bold text-neutral-500 mt-3 px-1">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <span key={d}>{d}</span>
-              ))}
-            </div>
+
+            {recentReviews.length === 0 ? (
+              <div className="py-12 text-center text-xs text-neutral-500 font-medium">
+                No customer reviews yet. Verified ratings will appear here.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {recentReviews.map((r) => (
+                  <div
+                    key={r._id}
+                    className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-white">{r.user?.name || "Customer"}</span>
+                      <div className="flex items-center text-amber-400">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={11}
+                            className={i < (r.rating || 5) ? "fill-amber-400" : "text-neutral-700"}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-neutral-400 text-[11px] line-clamp-2 italic font-light">"{r.message}"</p>
+                    <div className="pt-1 flex justify-between items-center text-[10px]">
+                      {r.ownerReply?.message ? (
+                        <span className="text-emerald-400 font-semibold">✓ Replied</span>
+                      ) : (
+                        <span className="text-amber-400 font-semibold">Awaiting Response</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
-      
-      
+        {showLocationModal && (
+          <ShopEditModal
+            shop={shop}
+            onClose={async () => {
+              setShowLocationModal(false);
+              await fetchDashboardStats();
+            }}
+          />
+        )}
+
       </main>
     </div>
   );
@@ -555,17 +1000,17 @@ export default function DashboardPage() {
             <Store className="w-8 h-8 text-emerald-400" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-white tracking-tight">No Merchant Registered</h2>
+            <h2 className="text-2xl font-black text-white tracking-tight">Venue Setup in Progress</h2>
             <p className="text-neutral-400 text-xs leading-relaxed">
-              Register business credentials to set up a merchant profile.
+              Your merchant account is active. Please contact the Ceylon Calling system administrator to link or activate your venue profile.
             </p>
           </div>
           <div className="space-y-2 pt-2">
             <button
-              onClick={() => navigate("/shopcreate")}
+              onClick={() => fetchShop()}
               className="w-full py-3 rounded-xl bg-emerald-500 text-neutral-950 font-bold hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20 text-xs"
             >
-              Register Profile
+              Check Venue Status
             </button>
             <button
               onClick={handleLogout}
@@ -579,8 +1024,15 @@ export default function DashboardPage() {
     );
   }
 
-  if (shop?.status === "pending") return <PendingScreen shop={shop} onLogout={handleLogout} />;
-  if (shop?.status === "suspended") return <SuspendedScreen shop={shop} onLogout={handleLogout} />;
+  if (shop?.status === "changes_requested") {
+    return <ChangesRequestedScreen shop={shop} onLogout={handleLogout} onRefresh={fetchShop} />;
+  }
+  if (shop?.status === "pending" || shop?.status === "under_review") {
+    return <PendingScreen shop={shop} onLogout={handleLogout} />;
+  }
+  if (shop?.status === "suspended" || shop?.status === "rejected") {
+    return <SuspendedScreen shop={shop} onLogout={handleLogout} />;
+  }
 
   return <ApprovedDashboard shop={shop} user={user} onLogout={handleLogout} />;
 }

@@ -18,9 +18,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SideNavbar from "../../shopowner/components/SideNavbar";
-import ChangePasswordModal from "../components/ChangePasswordModel";
+import ChangePasswordModal from "../../components/ChangePasswordModal";
 import ShopEditModal from "../components/ShopEdit";
-import UpdateProfileModal from "../components/UpdateProfileModel";
+import UpdateProfileModal from "../../components/UpdateProfileModal";
 import { useAuthStore } from "../store/authStore";
 
 const Settings = () => {

@@ -2,7 +2,7 @@ import express from "express";
 import { sessionAuth as userAuth } from "../middlewares/sessionAuth.js";
 import { sessionAuth } from "../middlewares/siteUserAuth.js";
 import Comment from "../models/comment.model.js";
-import Shop from "../models/Shop.js";
+import Shop from "../models/shop.model.js";
 const router = express.Router();
 
 // PUBLIC: Get all comments for a specific shop
@@ -50,13 +50,53 @@ router.post("/", sessionAuth, async (req, res) => {
 
     await comment.save();
     await comment.populate("user", "email name");
+
+    // Recalculate average rating for the shop
+    const allShopComments = await Comment.find({ shop: shop._id });
+    if (allShopComments.length > 0) {
+      const avg = allShopComments.reduce((sum, c) => sum + (c.rating || 5), 0) / allShopComments.length;
+      shop.rating = parseFloat(avg.toFixed(1));
+      await shop.save();
+    }
+
     res.status(201).json(comment);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PRIVATE: Delete a comment only for the shop 
+// PRIVATE: Delete a comment by the author (SiteUser)
+router.delete("/user/:id", sessionAuth, async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ error: "Review not found" });
+
+    if (String(comment.user) !== String(req.session.siteuserId)) {
+      return res.status(403).json({ error: "Unauthorized. You can only delete your own reviews." });
+    }
+
+    const shopId = comment.shop;
+    await Comment.findByIdAndDelete(comment._id);
+
+    // Recalculate average rating
+    const remainingComments = await Comment.find({ shop: shopId });
+    const shop = await Shop.findById(shopId);
+    if (shop) {
+      if (remainingComments.length > 0) {
+        const avg = remainingComments.reduce((sum, c) => sum + (c.rating || 5), 0) / remainingComments.length;
+        shop.rating = parseFloat(avg.toFixed(1));
+      } else {
+        shop.rating = 4.5;
+      }
+      await shop.save();
+    }
+
+    res.json({ message: "Review deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PRIVATE: Only shop owners can delete comments on their shops
 router.delete("/:id", userAuth, async (req, res) => {
   try {
@@ -73,15 +113,20 @@ router.delete("/:id", userAuth, async (req, res) => {
 
     await Comment.findByIdAndDelete(comment._id);
 
+    // Recalculate rating
+    const remainingComments = await Comment.find({ shop: shop._id });
+    if (remainingComments.length > 0) {
+      const avg = remainingComments.reduce((sum, c) => sum + (c.rating || 5), 0) / remainingComments.length;
+      shop.rating = parseFloat(avg.toFixed(1));
+    } else {
+      shop.rating = 4.5;
+    }
+    await shop.save();
+
     res.json({ message: "Comment deleted successfully." });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
-
-// PRIVATE: Delete a comment made by the current user
-
-
 
 export default router;

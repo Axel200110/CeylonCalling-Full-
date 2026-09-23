@@ -48,7 +48,7 @@ export default function RestaurantMenuPage() {
     if (!shopId) return;
     const fetchShop = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/shops/${shopId}`);
+        const res = await axios.get(`/api/shops/${shopId}`);
         setShop(res.data?.shop || null);
       } catch (err) {
         console.error("Error fetching shop for menu:", err);
@@ -64,7 +64,7 @@ export default function RestaurantMenuPage() {
       setLoadingFoods(true);
       setError(null);
       try {
-        const res = await axios.get(`http://localhost:5000/api/food/shop/${shopId}`);
+        const res = await axios.get(`/api/food/shop/${shopId}`);
         const foodList = Array.isArray(res.data) ? res.data : [];
         setFoods(foodList);
 
@@ -80,7 +80,7 @@ export default function RestaurantMenuPage() {
 
         // Also fetch shop categories endpoint if available
         try {
-          const catRes = await axios.get(`http://localhost:5000/api/categories/shop/${shopId}`);
+          const catRes = await axios.get(`/api/categories/shop/${shopId}`);
           if (Array.isArray(catRes.data)) {
             catRes.data.forEach((c) => {
               if (c._id && c.name) catMap.set(c._id, c.name);

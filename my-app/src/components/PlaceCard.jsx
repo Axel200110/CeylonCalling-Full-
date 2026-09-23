@@ -59,7 +59,7 @@ function PlaceCard({ place, categories = [], currentUserId }) {
       <header className="flex items-center gap-4 p-5">
         <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 shadow-sm flex-shrink-0">
           <img
-            src={mainImage.startsWith("/uploads/") ? `http://localhost:5000${mainImage}` : mainImage}
+            src={mainImage.startsWith("/uploads/") ? `${mainImage}` : mainImage}
             alt={place.title}
             className="w-full h-full object-cover"
             loading="lazy"
@@ -78,7 +78,7 @@ function PlaceCard({ place, categories = [], currentUserId }) {
       {/* Main Image */}
       <div className="relative group">
         <img
-          src={mainImage.startsWith("/uploads/") ? `http://localhost:5000${mainImage}` : mainImage}
+          src={mainImage.startsWith("/uploads/") ? `${mainImage}` : mainImage}
           alt={place.title}
           className="w-full h-40 sm:h-64 object-cover rounded-b-2xl"
           loading="lazy"

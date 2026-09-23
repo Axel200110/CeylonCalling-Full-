@@ -54,7 +54,15 @@ router.post("/", sessionAuth, async (req, res) => {
 
     await comment.save();
     await comment.populate("user", "email name");
-    
+
+    // Recalculate average rating for the place
+    const allPlaceComments = await Comment.find({ place: placeExists._id });
+    if (allPlaceComments.length > 0) {
+      const avg = allPlaceComments.reduce((sum, c) => sum + (c.rating || 5), 0) / allPlaceComments.length;
+      placeExists.rating = parseFloat(avg.toFixed(1));
+      await placeExists.save();
+    }
+
     res.status(201).json(comment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -69,6 +77,20 @@ router.delete("/:id", sessionAuth, async (req, res) => {
     });
 
     if (!comment) return res.status(404).json({ error: "Comment not found." });
+
+    // Recalculate average rating for the place
+    const remainingComments = await Comment.find({ place: comment.place });
+    const place = await Place.findById(comment.place);
+    if (place) {
+      if (remainingComments.length > 0) {
+        const avg = remainingComments.reduce((sum, c) => sum + (c.rating || 5), 0) / remainingComments.length;
+        place.rating = parseFloat(avg.toFixed(1));
+      } else {
+        place.rating = 4.5;
+      }
+      await place.save();
+    }
+
     res.json({ message: "Comment deleted." });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -1,9 +1,9 @@
-import { create } from "zustand";
 import axios from "axios";
+import { create } from "zustand";
 
 const API_URL =
   import.meta.env.MODE === "development"
-    ? "http://localhost:5000/api/siteuser"
+    ? "/api/siteuser"
     : "/api/siteuser";
 
 axios.defaults.withCredentials = true;
@@ -12,14 +12,21 @@ export const useSiteUserAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  isCheckingAuth: true,
   error: null,
   message: null,
 
   signup: async (email, password, name) => {
     set({ isLoading: true, error: null, message: null });
     try {
-      await axios.post(`${API_URL}/signup`, { email, password, name });
-      set({ isLoading: false, message: "Signup successful. Please verify your email." });
+      const res = await axios.post(`${API_URL}/signup`, { email, password, name });
+      set({
+        user: res.data.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        message: "Account created successfully",
+      });
     } catch (error) {
       set({
         error: error.response?.data?.message || error.message || "Error signing up",
@@ -111,13 +118,14 @@ export const useSiteUserAuthStore = create((set, get) => ({
   },
 
   checkAuth: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, isCheckingAuth: true, error: null });
     try {
       const res = await axios.get(`${API_URL}/check-auth`);
       set({
         user: res.data.user,
         isAuthenticated: true,
         isLoading: false,
+        isCheckingAuth: false,
         error: null,
       });
     } catch (error) {
@@ -125,6 +133,7 @@ export const useSiteUserAuthStore = create((set, get) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        isCheckingAuth: false,
         error: null,
       });
     }

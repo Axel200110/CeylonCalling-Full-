@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import Quiz from "../assets/Restaurent.jpg";
