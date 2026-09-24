@@ -508,6 +508,14 @@ router.delete("/rooms/:id", sessionAuth, async (req, res) => {
 // 6. SHOP CAPABILITIES & OPERATING STATUS
 // ==========================================
 
+const normalizeOperationalStatus = (status) => {
+  if (!status) return null;
+  const normalized = String(status).trim().toLowerCase();
+  if (normalized === "busy") return "temporarily_closed";
+  if (normalized === "close") return "closed";
+  return normalized;
+};
+
 // PUT: Update operational status & opening hours & capabilities
 router.put("/settings/operational", sessionAuth, async (req, res) => {
   try {
@@ -516,7 +524,15 @@ router.put("/settings/operational", sessionAuth, async (req, res) => {
 
     const { operationalStatus, capabilities, openingHours } = req.body;
 
-    if (operationalStatus) shop.operationalStatus = operationalStatus;
+    const nextOperationalStatus = normalizeOperationalStatus(operationalStatus);
+    const validOperationalStatuses = ["open", "closed", "temporarily_closed"];
+    if (nextOperationalStatus) {
+      if (!validOperationalStatuses.includes(nextOperationalStatus)) {
+        return res.status(400).json({ error: "Invalid business operational status" });
+      }
+      shop.operationalStatus = nextOperationalStatus;
+    }
+
     if (capabilities) shop.capabilities = { ...shop.capabilities, ...capabilities };
     if (openingHours) shop.openingHours = { ...shop.openingHours, ...openingHours };
 

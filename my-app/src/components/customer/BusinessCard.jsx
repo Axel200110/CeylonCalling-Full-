@@ -181,11 +181,13 @@ export default function BusinessCard({ shop }) {
           </button>
         </div>
 
-        {/* Operating status banner if closed */}
-        {shop.operationalStatus === "closed" && (
-          <div className="absolute bottom-2 left-3 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1">
+        {/* Operating status banner if not open */}
+        {shop.operationalStatus && shop.operationalStatus !== "open" && (
+          <div className={`absolute bottom-2 left-3 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1 ${
+            shop.operationalStatus === "temporarily_closed" ? "bg-amber-600/90" : "bg-slate-900/80"
+          }`}>
             <Clock size={10} />
-            <span>Temporarily Closed</span>
+            <span>{shop.operationalStatus === "temporarily_closed" ? "Busy" : "Closed"}</span>
           </div>
         )}
       </div>

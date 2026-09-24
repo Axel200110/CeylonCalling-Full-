@@ -386,7 +386,12 @@ export default function ShopDetails() {
                 )}
 
                 {/* Operating Status */}
-                {shop.operationalStatus === "closed" ? (
+                {shop.operationalStatus === "temporarily_closed" ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 text-xs font-medium">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span>Busy</span>
+                  </span>
+                ) : shop.operationalStatus === "closed" ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-medium">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
                     <span>Closed</span>

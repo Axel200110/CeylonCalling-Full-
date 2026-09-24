@@ -44,7 +44,7 @@ export default function CustomerRoomCard({ room, shop, onBookRoom }) {
     room.status === "maintenance" ||
     room.status === "booked" ||
     (room.availableUnits !== undefined && room.availableUnits <= 0) ||
-    shop?.operationalStatus === "closed";
+    (shop?.operationalStatus && shop.operationalStatus !== "open");
 
   const handlePrevPhoto = (e) => {
     e.stopPropagation();

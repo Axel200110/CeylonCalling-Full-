@@ -110,12 +110,33 @@ export const getPriceTier = (priceRangeStr = "") => {
 
 /**
  * Clean location display string
- * @param {string} location 
+ * @param {string|object} location
  * @returns {string}
  */
 export const formatLocation = (location) => {
   if (!location || location === "undefined" || location === "null") {
     return "Sri Lanka";
   }
-  return location.trim();
+
+  if (typeof location === "string") {
+    const cleanLocation = location.trim();
+    return cleanLocation && cleanLocation !== "undefined" && cleanLocation !== "null"
+      ? cleanLocation
+      : "Sri Lanka";
+  }
+
+  if (typeof location === "object") {
+    const parts = [
+      location.address,
+      location.city,
+      location.district,
+      location.province,
+    ]
+      .map((part) => (typeof part === "string" ? part.trim() : ""))
+      .filter(Boolean);
+
+    return parts.length > 0 ? parts.join(", ") : "Sri Lanka";
+  }
+
+  return "Sri Lanka";
 };
